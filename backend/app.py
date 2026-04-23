@@ -16,6 +16,7 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import yt_dlp
 import requests
+from youtube_transcript_api import YouTubeTranscriptApi
 
 app = Flask(__name__)
 CORS(app)
@@ -83,125 +84,73 @@ def detect_platform(url):
 # YouTube Transcript Extractor
 # ============================================
 
-# YouTube API Key from environment
-YOUTUBE_API_KEY = os.environ.get('YOUTUBE_API_KEY', '')
-
 def extract_youtube_transcript(video_id):
-    """Extract YouTube transcript using YouTube Data API + yt-dlp fallback"""
+    """Extract YouTube transcript using youtube_transcript_api"""
     title = 'Untitled'
     author = 'Unknown'
+    url = f"https://www.youtube.com/watch?v={video_id}"
 
-    # Step 1: Try yt-dlp for metadata + subtitles
+    # Step 1: Get metadata via yt-dlp (no cookies needed for just info)
     try:
-        url = f"https://www.youtube.com/watch?v={video_id}"
-        ydl_opts = {
-            'writesubtitles': True,
-            'writeautomaticsub': True,
-            'subtitlesformat': 'vtt',
-            'skip_download': True,
-            'quiet': True,
-            'no_warnings': True,
-        }
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            ydl_opts['outtmpl'] = os.path.join(tmpdir, '%(id)s.%(ext)s')
-
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                title = info.get('title', 'Untitled')
-                author = info.get('uploader', 'Unknown')
-
-                # Try downloading subtitles
-                ydl.download([url])
-
-                sub_files = list(Path(tmpdir).glob('*.vtt'))
-                if not sub_files:
-                    sub_files = list(Path(tmpdir).glob('*.srt'))
-
-                if sub_files:
-                    with open(sub_files[0], 'r', encoding='utf-8') as f:
-                        raw = f.read()
-                    transcript = parse_vtt(raw)
-                    if transcript:
-                        return {
-                            'platform': 'YouTube',
-                            'platformIcon': 'fa-brands fa-youtube',
-                            'title': title,
-                            'author': author,
-                            'transcript': transcript,
-                            'video_url': url,
-                        }
-
+        ydl_opts = {'quiet': True, 'no_warnings': True, 'skip_download': True}
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            title = info.get('title', 'Untitled')
+            author = info.get('uploader', 'Unknown')
     except Exception:
-        pass  # Fall through to API methods
+        pass
 
-    # Step 2: Try YouTube Data API for captions
-    if YOUTUBE_API_KEY:
+    # Step 2: Get transcript via youtube_transcript_api (no auth needed)
+    transcript_text = None
+    try:
+        api = YouTubeTranscriptApi()
+        transcript = api.fetch(video_id, languages=['zh-Hant', 'zh-Hans', 'zh', 'en'])
+        transcript_text = '\n'.join([item.text for item in transcript])
+    except Exception:
         try:
-            # Get caption tracks
-            captions_url = f"https://www.googleapis.com/youtube/v3/captions?part=snippet&videoId={video_id}&key={YOUTUBE_API_KEY}"
-            resp = requests.get(captions_url, timeout=10)
-            if resp.status_code == 200:
-                items = resp.json().get('items', [])
-                if items:
-                    # Prefer 'asr' (auto-generated) or first available
-                    caption_id = None
-                    for item in items:
-                        snip = item.get('snippet', {})
-                        lang = snip.get('language', '')
-                        track_kind = snip.get('trackKind', '')
-                        if 'zh' in lang and caption_id is None:
-                            caption_id = item['id']
-                        if track_kind == 'asr' and caption_id is None:
-                            caption_id = item['id']
-                    if caption_id is None and items:
-                        caption_id = items[0]['id']
-
-                    if caption_id:
-                        # Download caption content
-                        dl_url = f"https://www.googleapis.com/youtube/v3/captions/{caption_id}?key={YOUTUBE_API_KEY}&tfmt=srt"
-                        dl_resp = requests.get(dl_url, timeout=15)
-                        if dl_resp.status_code == 200:
-                            transcript = parse_vtt(dl_resp.text) if 'WEBVTT' in dl_resp.text else dl_resp.text[:5000]
-                            return {
-                                'platform': 'YouTube',
-                                'platformIcon': 'fa-brands fa-youtube',
-                                'title': title,
-                                'author': author,
-                                'transcript': transcript,
-                                'video_url': url,
-                            }
-
-            # Get video metadata
-            video_url = f"https://www.googleapis.com/youtube/v3/videos?part=snippet&id={video_id}&key={YOUTUBE_API_KEY}"
-            vresp = requests.get(video_url, timeout=10)
-            if vresp.status_code == 200:
-                vitems = vresp.json().get('items', [])
-                if vitems:
-                    snippet = vitems[0].get('snippet', {})
-                    title = snippet.get('title', title)
-                    author = snippet.get('channelTitle', author)
-                    desc = (snippet.get('description') or '')[:2000]
-                    if desc:
-                        return {
-                            'platform': 'YouTube',
-                            'platformIcon': 'fa-brands fa-youtube',
-                            'title': title,
-                            'author': author,
-                            'transcript': desc,
-                            'video_url': url,
-                        }
-
+            api = YouTubeTranscriptApi()
+            transcript = api.fetch(video_id)
+            transcript_text = '\n'.join([item.text for item in transcript])
         except Exception:
             pass
+
+    if transcript_text:
+        return {
+            'platform': 'YouTube',
+            'platformIcon': 'fa-brands fa-youtube',
+            'title': title,
+            'author': author,
+            'transcript': transcript_text,
+            'video_url': url,
+        }
+
+    # Fallback: return description
+    try:
+        ydl_opts = {'quiet': True, 'no_warnings': True, 'skip_download': True}
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            desc = (info.get('description') or '')[:2000]
+            title = info.get('title', title)
+            author = info.get('uploader', author)
+            if desc:
+                return {
+                    'platform': 'YouTube',
+                    'platformIcon': 'fa-brands fa-youtube',
+                    'title': title,
+                    'author': author,
+                    'transcript': desc,
+                    'video_url': url,
+                }
+    except Exception:
+        pass
 
     return {
         'platform': 'YouTube',
         'platformIcon': 'fa-brands fa-youtube',
         'title': title,
         'author': author,
-        'transcript': 'Could not extract transcript. The video may have no captions available.',
-        'error': 'No captions available',
+        'transcript': 'No transcript available for this video.',
+        'error': 'No captions',
     }
 
 
