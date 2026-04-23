@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VideoText AI - 影片文案提取 & 去水印工具</title>
+    <meta name="description" content="一鍵提取影片文案、去除水印。支援抖音、小紅書、B站、YouTube 等 50+ 平台，AI 智能識別，免費使用">
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        * { font-family: 'Inter', sans-serif; }
+        
+        body {
+            background: #0a0a0f;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        /* 背景動畫效果 */
+        .bg-gradient {
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+                        radial-gradient(ellipse at 80% 20%, rgba(168, 85, 247, 0.06) 0%, transparent 50%),
+                        radial-gradient(ellipse at 50% 80%, rgba(14, 165, 233, 0.06) 0%, transparent 50%);
+            z-index: -1;
+            animation: gradientMove 20s ease-in-out infinite;
+        }
+
+        @keyframes gradientMove {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(5%, 3%) rotate(1deg); }
+            66% { transform: translate(-3%, 5%) rotate(-1deg); }
+        }
+
+        /* 輸入框 */
+        .input-glow:focus {
+            box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.4), 0 0 30px rgba(99, 102, 241, 0.15);
+        }
+
+        /* 按鈕動畫 */
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.4);
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* 卡片 */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(99, 102, 241, 0.2);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 功能圖標 */
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        /* 步驟 */
+        .step-number {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            color: white;
+            flex-shrink: 0;
+        }
+
+        /* Loading 動畫 */
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(99, 102, 241, 0.2);
+            border-top-color: #6366f1;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* 結果卡片 */
+        .result-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            border-radius: 16px;
+        }
+
+        /* Toast 通知 */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 16px 24px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e2e8f0;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.4s ease;
+            z-index: 100;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0a0a0f; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+
+        /* 平台徽章 */
+        .platform-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 13px;
+            color: #94a3b8;
+            transition: all 0.2s;
+        }
+        .platform-badge:hover {
+            background: rgba(99, 102, 241, 0.1);
+            border-color: rgba(99, 102, 241, 0.3);
+            color: #c7d2fe;
+        }
+    </style>
+</head>
+<body>
+    <!-- 背景 -->
+    <div class="bg-gradient"></div>
+
+    <!-- 導航欄 -->
+    <nav class="fixed top-0 w-full z-50 bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center">
+                        <i class="fas fa-robot text-white text-sm"></i>
+                    </div>
+                    <span class="text-lg font-semibold text-white">VideoText <span class="text-indigo-400">AI</span></span>
+                </div>
+                <div class="hidden md:flex items-center gap-8">
+                    <a href="#features" class="text-sm text-gray-400 hover:text-white transition">功能</a>
+                    <a href="#how-it-works" class="text-sm text-gray-400 hover:text-white transition">使用方法</a>
+                    <a href="#pricing" class="text-sm text-gray-400 hover:text-white transition">價格</a>
+                    <a href="#" onclick="document.getElementById('url-input').focus()" class="text-sm bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg border border-white/10 transition">開始使用</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Hero Section -->
+    <section class="pt-32 pb-20 px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-sm mb-8">
+                <i class="fas fa-sparkles text-xs"></i>
+                <span>支援 50+ 平台 · AI 智能識別 · 完全免費</span>
+            </div>
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-bold leading-tight mb-6">
+                <span class="text-white">影片文案提取 &</span>
+                <br>
+                <span class="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">去水印工具</span>
+            </h1>
+            <p class="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto mb-10">
+                一鍵提取影片文案、轉換 MP3、去除水印。<br>
+                支援抖音、小紅書、YouTube、B站等 50+ 平台，AI 智能識別，批次下載。
+            </p>
+
+            <!-- 主要輸入區域 -->
+            <div class="max-w-2xl mx-auto">
+                <div class="glass-card rounded-2xl p-4">
+                    <div class="flex items-center gap-3 bg-white/5 rounded-xl px-4 border border-white/10 focus-within:border-indigo-500/40 transition-all">
+                        <i class="fas fa-link text-gray-500"></i>
+                        <input id="url-input" type="url" placeholder="貼上影片/圖片分享連結（支援抖音、小紅書、快手等 50+ 平台）"
+                            class="input-glow flex-1 bg-transparent py-4 text-white placeholder-gray-500 outline-none text-sm">
+                        <button onclick="clearInput()" id="clear-btn" class="text-gray-500 hover:text-white transition hidden">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="flex gap-3 mt-4">
+                        <button onclick="pasteUrl()" class="flex-1 px-4 py-3 rounded-xl border border-white/10 text-gray-300 hover:bg-white/5 transition text-sm font-medium">
+                            <i class="fas fa-paste mr-2"></i>貼上
+                        </button>
+                        <button onclick="startExtract()" id="extract-btn" disabled
+                            class="flex-1 btn-primary px-4 py-3 rounded-xl text-white text-sm font-semibold disabled:opacity-50">
+                            <i class="fas fa-magic mr-2"></i>開始提取
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 平台徽章 -->
+                <div class="flex flex-wrap justify-center gap-2 mt-6">
+                    <span class="platform-badge"><i class="fa-brands fa-tiktok text-white"></i> 抖音</span>
+                    <span class="platform-badge"><i class="fa-regular fa-note-sticky text-red-400"></i> 小紅書</span>
+                    <span class="platform-badge"><i class="fa-brands fa-youtube text-red-500"></i> YouTube</span>
+                    <span class="platform-badge"><i class="fa-brands fa-bilibili text-blue-400"></i> B站</span>
+                    <span class="platform-badge"><i class="fa-brands fa-weibo text-red-400"></i> 微博</span>
+                    <span class="platform-badge"><i class="fa-solid fa-video text-green-400"></i> 快手</span>
+                    <span class="platform-badge"><i class="fa-solid fa-plus"></i> 更多</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 結果區域 -->
+    <div id="result-area" class="hidden max-w-4xl mx-auto px-4 mb-20">
+        <!-- Loading -->
+        <div id="loading-state" class="hidden text-center py-16">
+            <div class="spinner mx-auto mb-6"></div>
+            <p class="text-indigo-300 font-medium">正在解析連結...</p>
+            <p class="text-gray-500 text-sm mt-2">AI 正在智能識別影片內容</p>
+        </div>
+
+        <!-- 錯誤 -->
+        <div id="error-state" class="hidden glass-card rounded-2xl p-8 text-center">
+            <div class="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-exclamation-triangle text-red-400 text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-2">提取失敗</h3>
+            <p id="error-message" class="text-gray-400">無法解析此連結，請確認連結是否正確。</p>
+            <button onclick="resetUI()" class="mt-6 px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition">
+                重新嘗試
+            </button>
+        </div>
+
+        <!-- 成功結果 -->
+        <div id="success-state" class="hidden">
+            <div class="glass-card rounded-2xl overflow-hidden">
+                <!-- 影片資訊 -->
+                <div class="p-6 border-b border-white/5">
+                    <div class="flex items-start gap-4">
+                        <div class="w-32 h-20 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                            <i class="fas fa-play-circle text-indigo-400 text-3xl"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h3 id="video-title" class="text-lg font-semibold text-white truncate">影片標題</h3>
+                            <p id="video-author" class="text-sm text-gray-400 mt-1">作者名稱</p>
+                            <p id="video-platform" class="text-xs text-gray-500 mt-1">
+                                <i class="fa-brands fa-youtube mr-1"></i> YouTube
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 文案內容 -->
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="font-semibold text-white flex items-center gap-2">
+                            <i class="fas fa-file-lines text-indigo-400"></i>
+                            提取文案
+                        </h4>
+                        <div class="flex gap-2">
+                            <button onclick="copyText()" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-gray-300 transition">
+                                <i class="fas fa-copy mr-1"></i>複製
+                            </button>
+                            <button onclick="downloadText()" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-gray-300 transition">
+                                <i class="fas fa-download mr-1"></i>下載
+                            </button>
+                        </div>
+                    </div>
+                    <div id="transcript-text" class="result-card p-4 text-sm text-gray-300 leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
+                    </div>
+
+                    <!-- 操作按鈕 -->
+                    <div class="flex flex-wrap gap-3 mt-6">
+                        <button onclick="downloadAudio()" class="flex-1 min-w-[140px] px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-gray-300 transition">
+                            <i class="fas fa-headphones mr-2"></i>下載音訊 (MP3)
+                        </button>
+                        <button onclick="downloadVideo()" class="flex-1 min-w-[140px] px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-gray-300 transition">
+                            <i class="fas fa-video mr-2"></i>下載影片 (無浮水印)
+                        </button>
+                        <button onclick="downloadAll()" class="flex-1 min-w-[140px] px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold transition hover:shadow-lg hover:shadow-indigo-500/25">
+                            <i class="fas fa-file-zipper mr-2"></i>打包下載 (ZIP)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 功能特色 -->
+    <section id="features" class="py-20 px-4">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">強大功能</h2>
+                <p class="text-gray-400 max-w-xl mx-auto">支援 50+ 平台，影片文案提取、去水印、音訊轉換，一應俱全</p>
+            </div>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="glass-card rounded-2xl p-6">
+                    <div class="feature-icon bg-indigo-500/10 text-indigo-400 mb-4">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-white mb-2">50+ 平台支援</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">支援抖音、小紅書、快手、B站、微博等主流平台，一鍵提取文案和無浮水印下載</p>
+                </div>
+                <div class="glass-card rounded-2xl p-6">
+                    <div class="feature-icon bg-purple-500/10 text-purple-400 mb-4">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-white mb-2">AI 智能識別</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">先進 AI 技術自動識別影片文字，高精度快速處理，支援多種語言</p>
+                </div>
+                <div class="glass-card rounded-2xl p-6">
+                    <div class="feature-icon bg-pink-500/10 text-pink-400 mb-4">
+                        <i class="fas fa-music"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-white mb-2">影片轉音訊</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">將影片轉換為 MP3 音訊格式，一鍵下載音訊，方便內容創作和編輯</p>
+                </div>
+                <div class="glass-card rounded-2xl p-6">
+                    <div class="feature-icon bg-blue-500/10 text-blue-400 mb-4">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-white mb-2">批次下載</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">支援批次下載影片、圖片，一鍵打包 ZIP，極大提升工作效率</p>
+                </div>
+                <div class="glass-card rounded-2xl p-6">
+                    <div class="feature-icon bg-green-500/10 text-green-400 mb-4">
+                        <i class="fas fa-water"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-white mb-2">去除浮水印</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">智能去除影片、圖片上的浮水印，高品質無損下載，保留原始畫質</p>
+                </div>
+                <div class="glass-card rounded-2xl p-6">
+                    <div class="feature-icon bg-amber-500/10 text-amber-400 mb-4">
+                        <i class="fas fa-lock-open"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-white mb-2">完全免費</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">完全免費使用，無需登入，無使用次數限制，快速提取，隱私保護</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 使用方法 -->
+    <section id="how-it-works" class="py-20 px-4">
+        <div class="max-w-4xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">三步驟輕鬆使用</h2>
+                <p class="text-gray-400">簡單三步，完成影片文案提取和去水印下載</p>
+            </div>
+            <div class="space-y-8">
+                <div class="glass-card rounded-2xl p-6 flex items-start gap-6">
+                    <div class="step-number">1</div>
+                    <div>
+                        <h3 class="text-xl font-semibold text-white mb-2">複製分享連結</h3>
+                        <p class="text-gray-400 leading-relaxed">從抖音、小紅書、YouTube 等平台複製影片或圖片的分享連結，貼上到輸入框</p>
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl p-6 flex items-start gap-6">
+                    <div class="step-number">2</div>
+                    <div>
+                        <h3 class="text-xl font-semibold text-white mb-2">一鍵提取</h3>
+                        <p class="text-gray-400 leading-relaxed">點擊開始提取，AI 自動識別影片文字、去除浮水印，快速處理</p>
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl p-6 flex items-start gap-6">
+                    <div class="step-number">3</div>
+                    <div>
+                        <h3 class="text-xl font-semibold text-white mb-2">下載保存</h3>
+                        <p class="text-gray-400 leading-relaxed">一鍵下載無浮水印影片、圖片，支援批次 ZIP 打包下載，方便快捷</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/5 py-12 px-4">
+        <div class="max-w-6xl mx-auto text-center">
+            <div class="flex items-center justify-center gap-3 mb-4">
+                <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center">
+                    <i class="fas fa-robot text-white text-xs"></i>
+                </div>
+                <span class="text-sm font-semibold text-white">VideoText <span class="text-indigo-400">AI</span></span>
+            </div>
+            <p class="text-gray-500 text-sm">© 2026 VideoText AI. 影片文案提取 & 去水印工具</p>
+        </div>
+    </footer>
+
+    <script>
+        // ========== 狀態管理 ==========
+        let extractedData = null;
+        // API 配置 - 根據環境自動切換
+        const DEV_MODE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const API_BASE = DEV_MODE ? 'http://localhost:5000' : 'https://anytocopy-backend.onrender.com';
+
+        // ========== 輸入框監聽 ==========
+        const urlInput = document.getElementById('url-input');
+        const extractBtn = document.getElementById('extract-btn');
+        const clearBtn = document.getElementById('clear-btn');
+
+        urlInput.addEventListener('input', () => {
+            const hasValue = urlInput.value.trim().length > 0;
+            extractBtn.disabled = !hasValue;
+            clearBtn.classList.toggle('hidden', !hasValue);
+        });
+
+        // Enter 鍵觸發
+        urlInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !extractBtn.disabled) startExtract();
+        });
+
+        // ========== 功能函數 ==========
+        function pasteUrl() {
+            navigator.clipboard.readText().then(text => {
+                urlInput.value = text;
+                urlInput.dispatchEvent(new Event('input'));
+                showToast('已貼上連結', 'info');
+            }).catch(() => {
+                showToast('無法讀取剪貼簿，請手動貼上', 'error');
+            });
+        }
+
+        function clearInput() {
+            urlInput.value = '';
+            extractBtn.disabled = true;
+            clearBtn.classList.add('hidden');
+            document.getElementById('result-area').classList.add('hidden');
+            urlInput.focus();
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.borderColor = type === 'error' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(99, 102, 241, 0.3)';
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function resetUI() {
+            document.getElementById('result-area').classList.add('hidden');
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('error-state').classList.add('hidden');
+            document.getElementById('success-state').classList.add('hidden');
+        }
+
+        // ========== 核心提取邏輯 ==========
+        async function startExtract() {
+            const url = urlInput.value.trim();
+            if (!url) return;
+
+            resetUI();
+            document.getElementById('result-area').classList.remove('hidden');
+            document.getElementById('loading-state').classList.remove('hidden');
+
+            try {
+                // 先嘗試連接到後端 API
+                const response = await fetch(`${API_BASE}/api/extract`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+
+                if (!response.ok) throw new Error('API 請求失敗');
+
+                const data = await response.json();
+                displayResult(data);
+            } catch (err) {
+                // 後端不可用時，使用前端模擬數據
+                console.log('後端不可用，使用模擬數據:', err.message);
+                const mockData = getMockData(url);
+                displayResult(mockData);
+            }
+        }
+
+        function getMockData(url) {
+            let platform = 'YouTube';
+            let icon = 'fa-brands fa-youtube';
+            
+            if (url.includes('douyin') || url.includes('tiktok')) {
+                platform = '抖音';
+                icon = 'fa-brands fa-tiktok';
+            } else if (url.includes('xiaohongshu') || url.includes('xhslink')) {
+                platform = '小紅書';
+                icon = 'fa-regular fa-note-sticky';
+            } else if (url.includes('bilibili') || url.includes('b23')) {
+                platform = 'B站';
+                icon = 'fa-brands fa-bilibili';
+            } else if (url.includes('weibo')) {
+                platform = '微博';
+                icon = 'fa-brands fa-weibo';
+            }
+
+            return {
+                platform: platform,
+                platformIcon: icon,
+                title: `來自 ${platform} 的精彩影片`,
+                author: '創作者名稱',
+                transcript: `這是從 ${platform} 提取的範例文案內容。
+
+📌 重點摘要：
+1. 這是影片的核心觀點
+2. 第二個重要資訊點
+3. 內容的總結和行動呼籲
+
+💡 提示：當後端 API 部署完成後，這裡將顯示真實的 AI 提取內容。
+
+🔧 目前支援的提取方式：
+• YouTube → YouTube Transcript API（字幕提取）
+• 抖音/小紅書 → 影片下載 + OCR 文字識別（需後端支援）
+• B站 → 內建字幕提取（需後端支援）
+• 一般影片 → FFmpeg 音訊提取 + Whisper 語音轉文字（需後端支援）`
+            };
+        }
+
+        function displayResult(data) {
+            extractedData = data;
+            document.getElementById('loading-state').classList.add('hidden');
+
+            if (data.error) {
+                document.getElementById('error-message').textContent = data.error;
+                document.getElementById('error-state').classList.remove('hidden');
+                return;
+            }
+
+            document.getElementById('success-state').classList.remove('hidden');
+            document.getElementById('video-title').textContent = data.title || '未知標題';
+            document.getElementById('video-author').textContent = data.author || '未知作者';
+            document.getElementById('video-platform').innerHTML = `<i class="${data.platformIcon || 'fa-brands fa-youtube'} mr-1"></i> ${data.platform || '未知平台'}`;
+            document.getElementById('transcript-text').textContent = data.transcript || '暫無文案內容';
+
+            showToast('✅ 提取成功！', 'info');
+        }
+
+        // ========== 下載功能 ==========
+        function copyText() {
+            const text = document.getElementById('transcript-text').textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('✅ 文案已複製到剪貼簿', 'info');
+            }).catch(() => {
+                showToast('複製失敗，請手動選取複製', 'error');
+            });
+        }
+
+        function downloadText() {
+            const text = document.getElementById('transcript-text').textContent;
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'transcript.txt';
+            a.click();
+            URL.revokeObjectURL(a.href);
+            showToast('✅ 文案已下載', 'info');
+        }
+
+        function downloadAudio() {
+            showToast('🔧 音訊下載功能即將上線', 'info');
+        }
+
+        function downloadVideo() {
+            showToast('🔧 影片下載功能即將上線', 'info');
+        }
+
+        function downloadAll() {
+            showToast('🔧 打包下載功能即將上線', 'info');
+        }
+    </script>
+</body>
+</html>
