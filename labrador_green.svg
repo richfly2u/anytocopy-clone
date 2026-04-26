@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" width="1200" height="800">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4a90d9"/>
+      <stop offset="60%" stop-color="#87ceeb"/>
+      <stop offset="100%" stop-color="#b0e0e6"/>
+    </linearGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7ec850"/>
+      <stop offset="100%" stop-color="#4a8c2a"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#fff7b0"/>
+      <stop offset="60%" stop-color="#ffe44d"/>
+      <stop offset="100%" stop-color="#ffb70088"/>
+    </radialGradient>
+  </defs>
+
+  <!-- 天空 -->
+  <rect x="0" y="0" width="1200" height="500" fill="url(#sky)"/>
+
+  <!-- 太陽 -->
+  <circle cx="1000" cy="120" r="60" fill="url(#sun)"/>
+  <circle cx="1000" cy="120" r="50" fill="#fff7b0" opacity="0.3"/>
+
+  <!-- 白雲 -->
+  <g fill="white" opacity="0.85">
+    <ellipse cx="200" cy="100" rx="80" ry="30"/>
+    <ellipse cx="250" cy="90" rx="60" ry="25"/>
+    <ellipse cx="150" cy="95" rx="50" ry="22"/>
+    <ellipse cx="700" cy="140" rx="90" ry="28"/>
+    <ellipse cx="760" cy="130" rx="65" ry="24"/>
+    <ellipse cx="650" cy="135" rx="55" ry="20"/>
+    <ellipse cx="450" cy="80" rx="70" ry="22"/>
+    <ellipse cx="500" cy="72" rx="55" ry="20"/>
+  </g>
+
+  <!-- 遠山 -->
+  <path d="M0 400 Q150 280, 300 380 Q400 320, 500 370 Q600 300, 750 360 Q900 290, 1050 350 Q1150 310, 1200 370 L1200 500 L0 500Z" fill="#6abf4a" opacity="0.5"/>
+
+  <!-- 草地 -->
+  <rect x="0" y="470" width="1200" height="330" fill="url(#ground)"/>
+
+  <!-- 草葉（前景） -->
+  <g stroke="#3a7a1a" stroke-width="2" fill="none" opacity="0.6">
+    <path d="M50 700 Q55 660, 52 630"/>
+    <path d="M55 700 Q60 665, 58 635"/>
+    <path d="M150 720 Q155 680, 152 650"/>
+    <path d="M350 690 Q355 650, 350 620"/>
+    <path d="M355 690 Q360 655, 358 625"/>
+    <path d="M550 710 Q555 675, 552 645"/>
+    <path d="M750 695 Q755 660, 752 630"/>
+    <path d="M900 715 Q905 680, 902 650"/>
+    <path d="M1050 705 Q1055 670, 1050 640"/>
+    <path d="M1100 710 Q1105 675, 1102 645"/>
+    <path d="M200 680 Q205 645, 202 615"/>
+    <path d="M800 685 Q805 650, 800 620"/>
+  </g>
+
+  <!-- 小花 -->
+  <g>
+    <circle cx="120" cy="650" r="4" fill="#ff6b9d"/>
+    <circle cx="125" cy="645" r="4" fill="#ff6b9d"/>
+    <circle cx="123" cy="647" r="2" fill="#ffaa00"/>
+    <circle cx="400" cy="680" r="4" fill="#ff6b9d"/>
+    <circle cx="405" cy="675" r="4" fill="#ff6b9d"/>
+    <circle cx="402" cy="678" r="2" fill="#ffaa00"/>
+    <circle cx="650" cy="670" r="4" fill="#ffaa00"/>
+    <circle cx="655" cy="665" r="4" fill="#ffaa00"/>
+    <circle cx="653" cy="668" r="2" fill="#ff6b9d"/>
+    <circle cx="950" cy="660" r="4" fill="#ffffff"/>
+    <circle cx="955" cy="655" r="4" fill="#ffffff"/>
+    <circle cx="952" cy="658" r="2" fill="#ffaa00"/>
+  </g>
+
+  <!-- ========== 拉布拉多犬（奔跑中） ========== -->
+  <g transform="translate(550, 400)">
+    <!-- 尾巴（上揚，快樂） -->
+    <path d="M-60 30 Q-90 0, -85 -30 Q-80 -50, -70 -45 Q-60 -40, -65 -25 Q-70 -10, -60 20" fill="#c8923a" stroke="#a07020" stroke-width="1.5"/>
+
+    <!-- 身體 -->
+    <ellipse cx="0" cy="30" rx="65" ry="30" fill="#c8923a"/>
+
+    <!-- 身體光影 -->
+    <ellipse cx="-5" cy="20" rx="50" ry="18" fill="#d6a24a" opacity="0.5"/>
+
+    <!-- 後腿（伸展） -->
+    <!-- 右後腿向後伸展 -->
+    <path d="M-35 45 L-70 100 L-65 105 L-55 100 L-45 90" fill="#c8923a" stroke="#a07020" stroke-width="2"/>
+    <ellipse cx="-62" cy="102" rx="10" ry="5" fill="#a07020"/>
+    <!-- 左後腿向前 -->
+    <path d="M-25 45 L-10 90 L-5 95 L-15 95 L-30 85" fill="#d6a24a" stroke="#b08020" stroke-width="2"/>
+    <ellipse cx="-8" cy="97" rx="10" ry="5" fill="#b08020"/>
+
+    <!-- 前腿（伸展） -->
+    <!-- 右前腿向後 -->
+    <path d="M30 40 L55 100 L60 105 L50 100 L40 95" fill="#c8923a" stroke="#a07020" stroke-width="2"/>
+    <ellipse cx="57" cy="103" rx="9" ry="5" fill="#a07020"/>
+    <!-- 左前腿向前 -->
+    <path d="M40 35 L70 85 L78 90 L68 88 L55 80" fill="#d6a24a" stroke="#b08020" stroke-width="2"/>
+    <ellipse cx="75" cy="92" rx="9" ry="5" fill="#b08020"/>
+
+    <!-- 胸部 -->
+    <ellipse cx="35" cy="25" rx="25" ry="28" fill="#d6a24a"/>
+
+    <!-- 脖子 -->
+    <ellipse cx="45" cy="10" rx="15" ry="20" fill="#d6a24a"/>
+
+    <!-- 頭 -->
+    <ellipse cx="55" cy="-10" rx="22" ry="20" fill="#c8923a"/>
+
+    <!-- 口鼻部 -->
+    <ellipse cx="75" cy="-5" rx="14" ry="10" fill="#d6a24a"/>
+    <ellipse cx="82" cy="-5" rx="6" ry="4" fill="#a07020"/>
+
+    <!-- 鼻子 -->
+    <ellipse cx="86" cy="-4" rx="5" ry="4" fill="#2a1a0a"/>
+
+    <!-- 眼睛（快樂） -->
+    <ellipse cx="62" cy="-14" rx="4" ry="3" fill="#2a1a0a"/>
+    <circle cx="63" cy="-15" r="1.5" fill="white" opacity="0.7"/>
+
+    <!-- 嘴巴（張開笑） -->
+    <path d="M80 -1 Q85 5, 88 0" fill="none" stroke="#2a1a0a" stroke-width="1.5"/>
+    <path d="M78 1 Q82 8, 88 2" fill="#cc4444" stroke="#aa2222" stroke-width="1"/>
+
+    <!-- 舌頭 -->
+    <ellipse cx="83" cy="7" rx="5" ry="7" fill="#ee6666"/>
+    <path d="M83 3 Q85 8, 83 12" fill="none" stroke="#cc4444" stroke-width="0.8"/>
+
+    <!-- 耳朵（飛揚） -->
+    <path d="M48 -25 Q35 -45, 50 -42 Q55 -40, 60 -30" fill="#a07020" stroke="#8a5a18" stroke-width="1.5"/>
+    <path d="M55 -28 Q60 -48, 68 -40 Q70 -38, 62 -30" fill="#b08030" stroke="#8a5a18" stroke-width="1.5"/>
+
+    <!-- 項圈 -->
+    <rect x="38" y="0" width="22" height="5" rx="2" fill="#e03030"/>
+
+    <!-- 奔跑時揚起的塵土 -->
+    <g opacity="0.4">
+      <circle cx="-80" cy="105" r="8" fill="#b8a878"/>
+      <circle cx="-90" cy="100" r="6" fill="#b8a878"/>
+      <circle cx="-75" cy="110" r="5" fill="#c8b888"/>
+      <circle cx="-95" cy="108" r="4" fill="#c8b888"/>
+      <circle cx="-85" cy="112" r="3" fill="#d8c898"/>
+    </g>
+  </g>
+
+  <!-- 蝴蝶 -->
+  <g transform="translate(800, 350)">
+    <ellipse cx="-6" cy="0" rx="6" ry="4" fill="#ff88cc" opacity="0.7" transform="rotate(-20)"/>
+    <ellipse cx="6" cy="0" rx="6" ry="4" fill="#ff88cc" opacity="0.7" transform="rotate(20)"/>
+    <ellipse cx="0" cy="-2" rx="1.5" ry="4" fill="#ffaaee"/>
+  </g>
+
+  <!-- 標題 -->
+  <text x="600" y="770" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#2a5a0a" font-weight="bold" opacity="0.7">🐕 拉布拉多在草原快樂奔跑</text>
+</svg>

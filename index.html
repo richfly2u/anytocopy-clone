@@ -172,17 +172,33 @@
     <nav class="fixed top-0 w-full z-50 bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/5">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('/')">
                     <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center">
                         <i class="fas fa-robot text-white text-sm"></i>
                     </div>
                     <span class="text-lg font-semibold text-white">VideoText <span class="text-indigo-400">AI</span></span>
                 </div>
-                <div class="hidden md:flex items-center gap-8">
-                    <a href="#features" class="text-sm text-gray-400 hover:text-white transition">功能</a>
-                    <a href="#how-it-works" class="text-sm text-gray-400 hover:text-white transition">使用方法</a>
-                    <a href="#pricing" class="text-sm text-gray-400 hover:text-white transition">價格</a>
-                    <a href="#" onclick="document.getElementById('url-input').focus()" class="text-sm bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg border border-white/10 transition">開始使用</a>
+                <div class="hidden md:flex items-center gap-6">
+                    <a href="#" onclick="navigate('/')" class="text-sm text-gray-400 hover:text-white transition" data-nav="/">首頁</a>
+                    <a href="#" onclick="navigate('/xiaohongshu')" class="text-sm text-gray-400 hover:text-white transition" data-nav="/xiaohongshu"><i class="fa-regular fa-note-sticky mr-1 text-red-400"></i>小紅書</a>
+                    <a href="#" onclick="navigate('/douyin')" class="text-sm text-gray-400 hover:text-white transition" data-nav="/douyin"><i class="fa-brands fa-tiktok mr-1"></i>抖音</a>
+                    <a href="#" onclick="navigate('/batch')" class="text-sm text-gray-400 hover:text-white transition" data-nav="/batch"><i class="fas fa-layer-group mr-1"></i>批次</a>
+                    <a href="#" onclick="navigate('/rewrite')" class="text-sm text-gray-400 hover:text-white transition" data-nav="/rewrite"><i class="fas fa-wand-magic mr-1 text-amber-400"></i>AI改寫</a>
+                    <a href="#" onclick="document.getElementById('url-input')?.focus()" class="text-sm bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg border border-white/10 transition">開始使用</a>
+                </div>
+                <!-- Mobile menu button -->
+                <button class="md:hidden text-gray-400 hover:text-white" onclick="toggleMobileMenu()">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+            <!-- Mobile menu -->
+            <div id="mobile-menu" class="hidden md:hidden pb-4 border-t border-white/5 pt-3">
+                <div class="flex flex-col gap-2">
+                    <a href="#" onclick="navigate('/'); toggleMobileMenu()" class="px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-white/5">首頁</a>
+                    <a href="#" onclick="navigate('/xiaohongshu'); toggleMobileMenu()" class="px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-white/5">📕 小紅書</a>
+                    <a href="#" onclick="navigate('/douyin'); toggleMobileMenu()" class="px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-white/5">🎵 抖音</a>
+                    <a href="#" onclick="navigate('/batch'); toggleMobileMenu()" class="px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-white/5">📦 批次</a>
+                    <a href="#" onclick="navigate('/rewrite'); toggleMobileMenu()" class="px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-white/5">✍️ AI改寫</a>
                 </div>
             </div>
         </div>
@@ -191,6 +207,8 @@
     <!-- Toast -->
     <div id="toast" class="toast"></div>
 
+    <!-- ==================== 頁面容器: 首頁 ==================== -->
+    <div id="page-home" class="">
     <!-- Hero Section -->
     <section class="pt-32 pb-20 px-4">
         <div class="max-w-4xl mx-auto text-center">
@@ -271,7 +289,7 @@
                 <!-- 影片資訊 -->
                 <div class="p-6 border-b border-white/5">
                     <div class="flex items-start gap-4">
-                        <div class="w-32 h-20 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                        <div id="video-thumbnail" class="w-32 h-20 rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex-shrink-0 flex items-center justify-center overflow-hidden cursor-pointer" onclick="playPreview()">
                             <i class="fas fa-play-circle text-indigo-400 text-3xl"></i>
                         </div>
                         <div class="flex-1 min-w-0">
@@ -281,6 +299,28 @@
                                 <i class="fa-brands fa-youtube mr-1"></i> YouTube
                             </p>
                         </div>
+                    </div>
+                </div>
+
+                <!-- 圖片 Gallery（僅圖文筆記顯示） -->
+                <div id="image-gallery" class="hidden p-6 border-b border-white/5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="font-semibold text-white flex items-center gap-2">
+                            <i class="fas fa-images text-pink-400"></i>
+                            <span id="gallery-count">圖片畫廊</span>
+                        </h4>
+                    </div>
+                    <div id="gallery-grid" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    </div>
+                </div>
+
+                <!-- 影片預覽彈窗 -->
+                <div id="video-preview-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onclick="closePreview()">
+                    <div class="relative max-w-4xl w-full" onclick="event.stopPropagation()">
+                        <button onclick="closePreview()" class="absolute -top-10 right-0 text-white/60 hover:text-white transition">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                        <video id="preview-video" class="w-full rounded-xl shadow-2xl" controls autoplay></video>
                     </div>
                 </div>
 
@@ -305,11 +345,14 @@
 
                     <!-- 操作按鈕 -->
                     <div class="flex flex-wrap gap-3 mt-6">
-                        <button onclick="downloadAudio()" class="flex-1 min-w-[140px] px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-gray-300 transition">
+                        <button onclick="downloadAudio()" id="btn-download-audio" class="flex-1 min-w-[140px] px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-gray-300 transition">
                             <i class="fas fa-headphones mr-2"></i>下載音訊 (MP3)
                         </button>
-                        <button onclick="downloadVideo()" class="flex-1 min-w-[140px] px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-gray-300 transition">
-                            <i class="fas fa-video mr-2"></i>下載影片 (無浮水印)
+                        <button onclick="downloadVideo()" id="btn-download-video" class="flex-1 min-w-[140px] px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-gray-300 transition">
+                            <i class="fas fa-video mr-2"></i>下載影片
+                        </button>
+                        <button onclick="downloadImages()" id="btn-download-images" class="hidden flex-1 min-w-[140px] px-4 py-3 rounded-xl bg-gradient-to-r from-pink-600 to-red-600 text-white text-sm font-semibold transition hover:shadow-lg hover:shadow-pink-500/25">
+                            <i class="fas fa-images mr-2"></i>下載圖片
                         </button>
                         <button onclick="downloadAll()" class="flex-1 min-w-[140px] px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold transition hover:shadow-lg hover:shadow-indigo-500/25">
                             <i class="fas fa-file-zipper mr-2"></i>打包下載 (ZIP)
@@ -420,7 +463,179 @@
         </div>
     </footer>
 
+    <!-- ==================== 頁面容器: 小紅書 ==================== -->
+    <div id="page-xiaohongshu" class="hidden pt-32 pb-20 px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500/20 to-pink-500/20 flex items-center justify-center mx-auto mb-4">
+                <i class="fa-regular fa-note-sticky text-red-400 text-3xl"></i>
+            </div>
+            <h1 class="text-3xl md:text-5xl font-bold mb-4">
+                <span class="text-white">小紅書</span>
+                <span class="bg-gradient-to-r from-red-400 to-pink-400 bg-clip-text text-transparent">去水印下載</span>
+            </h1>
+            <p class="text-gray-400 max-w-xl mx-auto mb-10">一鍵下載小紅書筆記中的影片和圖片，去除水印，保留原始畫質</p>
+            <div class="max-w-2xl mx-auto">
+                <div class="glass-card rounded-2xl p-4">
+                    <div class="flex items-center gap-3 bg-white/5 rounded-xl px-4 border border-white/10 focus-within:border-red-500/40 transition-all">
+                        <i class="fa-regular fa-note-sticky text-gray-500"></i>
+                        <input id="xhs-url-input" type="url" placeholder="貼上小紅書分享連結（xhslink.com 或 xiaohongshu.com）"
+                            class="input-glow flex-1 bg-transparent py-4 text-white placeholder-gray-500 outline-none text-sm">
+                        <button onclick="document.getElementById('xhs-url-input').value=''; this.previousElementSibling.value=''" class="text-gray-500 hover:text-white transition">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="flex gap-3 mt-4">
+                        <button onclick="navigator.clipboard.readText().then(t=>document.getElementById('xhs-url-input').value=t)"
+                            class="flex-1 px-4 py-3 rounded-xl border border-white/10 text-gray-300 hover:bg-white/5 transition text-sm font-medium">
+                            <i class="fas fa-paste mr-2"></i>貼上
+                        </button>
+                        <button onclick="startExtractFrom('xhs-url-input')"
+                            class="flex-1 bg-gradient-to-r from-red-500 to-pink-500 px-4 py-3 rounded-xl text-white text-sm font-semibold transition hover:shadow-lg hover:shadow-red-500/25">
+                            <i class="fas fa-download mr-2"></i>下載影片
+                        </button>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-4">支援：影片去水印、圖片提取、Live圖下載、文案提取</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 頁面容器: 抖音 ==================== -->
+    <div id="page-douyin" class="hidden pt-32 pb-20 px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center mx-auto mb-4">
+                <i class="fa-brands fa-tiktok text-purple-400 text-3xl"></i>
+            </div>
+            <h1 class="text-3xl md:text-5xl font-bold mb-4">
+                <span class="text-white">抖音</span>
+                <span class="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">去水印下載</span>
+            </h1>
+            <p class="text-gray-400 max-w-xl mx-auto mb-10">一鍵下載抖音影片，去除浮水印，保留原始高畫質</p>
+            <div class="max-w-2xl mx-auto">
+                <div class="glass-card rounded-2xl p-4">
+                    <div class="flex items-center gap-3 bg-white/5 rounded-xl px-4 border border-white/10 focus-within:border-purple-500/40 transition-all">
+                        <i class="fa-brands fa-tiktok text-gray-500"></i>
+                        <input id="dy-url-input" type="url" placeholder="貼上抖音分享連結（douyin.com 或 v.douyin.com）"
+                            class="input-glow flex-1 bg-transparent py-4 text-white placeholder-gray-500 outline-none text-sm">
+                        <button onclick="document.getElementById('dy-url-input').value=''" class="text-gray-500 hover:text-white transition">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="flex gap-3 mt-4">
+                        <button onclick="navigator.clipboard.readText().then(t=>document.getElementById('dy-url-input').value=t)"
+                            class="flex-1 px-4 py-3 rounded-xl border border-white/10 text-gray-300 hover:bg-white/5 transition text-sm font-medium">
+                            <i class="fas fa-paste mr-2"></i>貼上
+                        </button>
+                        <button onclick="startExtractFrom('dy-url-input')"
+                            class="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-3 rounded-xl text-white text-sm font-semibold transition hover:shadow-lg hover:shadow-purple-500/25">
+                            <i class="fas fa-download mr-2"></i>下載影片
+                        </button>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-4">支援：去水印下載、文案提取、MP3 轉換</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 頁面容器: 批次 ==================== -->
+    <div id="page-batch" class="hidden pt-32 pb-20 px-4">
+        <div class="max-w-4xl mx-auto">
+            <h1 class="text-3xl md:text-5xl font-bold text-center mb-4">批次處理</h1>
+            <p class="text-gray-400 text-center max-w-xl mx-auto mb-10">一次貼上多個連結，批量提取文案和下載影片</p>
+            <div class="glass-card rounded-2xl p-6">
+                <textarea id="batch-urls" rows="6"
+                    placeholder="每行貼上一個連結，支援混合平台（YouTube、小紅書、抖音、B站等）"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white placeholder-gray-500 outline-none text-sm resize-none focus:border-indigo-500/40 transition"
+                    oninput="document.getElementById('batch-start-btn').disabled=!this.value.trim()"></textarea>
+                <div class="flex gap-3 mt-4">
+                    <button onclick="document.getElementById('batch-urls').value=''; document.getElementById('batch-start-btn').disabled=true"
+                        class="px-6 py-3 rounded-xl border border-white/10 text-gray-300 hover:bg-white/5 transition text-sm font-medium">清空</button>
+                    <button onclick="startBatch()" id="batch-start-btn" disabled
+                        class="flex-1 btn-primary px-6 py-3 rounded-xl text-white text-sm font-semibold">開始批次處理</button>
+                </div>
+                <div id="batch-progress" class="hidden mt-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm text-gray-400">處理進度</span>
+                        <span id="batch-status" class="text-sm text-indigo-300">0 / 0</span>
+                    </div>
+                    <div class="w-full bg-white/5 rounded-full h-2">
+                        <div id="batch-bar" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-2 rounded-full transition-all" style="width:0%"></div>
+                    </div>
+                    <div id="batch-results" class="mt-4 space-y-2"></div>
+                    <button onclick="downloadBatchZip()" id="btn-batch-zip" class="hidden mt-4 w-full px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold transition hover:shadow-lg hover:shadow-indigo-500/25">
+                        <i class="fas fa-file-zipper mr-2"></i>下載全部 (ZIP)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 頁面容器: AI改寫 ==================== -->
+    <div id="page-rewrite" class="hidden pt-32 pb-20 px-4">
+        <div class="max-w-4xl mx-auto">
+            <h1 class="text-3xl md:text-5xl font-bold text-center mb-4">AI 文案改寫</h1>
+            <p class="text-gray-400 text-center max-w-xl mx-auto mb-10">使用 AI 智能改寫你的文案，支援多種風格</p>
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="glass-card rounded-2xl p-6">
+                    <h3 class="text-lg font-semibold text-white mb-3">原始文案</h3>
+                    <textarea id="rewrite-input" rows="10"
+                        placeholder="貼上要改寫的文案..."
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white placeholder-gray-500 outline-none text-sm resize-none focus:border-amber-500/40 transition"
+                        oninput="document.getElementById('rewrite-btn').disabled=!this.value.trim()"></textarea>
+                    <div class="flex gap-2 mt-3">
+                        <select id="rewrite-style" class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none flex-1">
+                            <option value="formal">正式風格</option>
+                            <option value="casual">輕鬆風格</option>
+                            <option value="persuasive">說服風格</option>
+                            <option value="concise">精簡風格</option>
+                        </select>
+                        <button onclick="startRewrite()" id="rewrite-btn" disabled
+                            class="btn-primary px-6 py-2 rounded-xl text-white text-sm font-semibold">開始改寫</button>
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl p-6">
+                    <h3 class="text-lg font-semibold text-white mb-3">改寫結果</h3>
+                    <div id="rewrite-result" class="text-gray-400 text-sm min-h-[260px] flex items-center justify-center">
+                        <span>點擊「開始改寫」生成結果</span>
+                    </div>
+                    <button onclick="copyRewriteResult()" class="mt-3 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-sm text-gray-300 transition">
+                        <i class="fas fa-copy mr-1"></i>複製結果
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div> <!-- 關閉 page-home -->
+
     <script>
+        // ========== SPA 路由 ==========
+        let currentPage = '/';
+
+        function toggleMobileMenu() {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        }
+
+        function navigate(path) {
+            currentPage = path;
+            const pages = document.querySelectorAll('[id^="page-"]');
+            pages.forEach(p => p.classList.add('hidden'));
+            const pageMap = {
+                '/': 'page-home',
+                '/xiaohongshu': 'page-xiaohongshu',
+                '/douyin': 'page-douyin',
+                '/batch': 'page-batch',
+                '/rewrite': 'page-rewrite',
+            };
+            const target = document.getElementById(pageMap[path] || 'page-home');
+            if (target) target.classList.remove('hidden');
+            document.querySelectorAll('[data-nav]').forEach(el => {
+                el.classList.toggle('text-white', el.dataset.nav === path);
+                el.classList.toggle('text-gray-400', el.dataset.nav !== path);
+            });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
         // ========== 狀態管理 ==========
         let extractedData = null;
         // API 配置 - 根據環境自動切換
@@ -556,13 +771,187 @@
                 return;
             }
 
+            // 基本資訊
             document.getElementById('success-state').classList.remove('hidden');
             document.getElementById('video-title').textContent = data.title || '未知標題';
             document.getElementById('video-author').textContent = data.author || '未知作者';
             document.getElementById('video-platform').innerHTML = `<i class="${data.platformIcon || 'fa-brands fa-youtube'} mr-1"></i> ${data.platform || '未知平台'}`;
             document.getElementById('transcript-text').textContent = data.transcript || '暫無文案內容';
 
+            // 縮圖
+            const thumb = document.getElementById('video-thumbnail');
+            if (data.thumbnail) {
+                thumb.innerHTML = `<img src="${data.thumbnail}" class="w-full h-full object-cover" alt="thumbnail">`;
+            } else {
+                thumb.innerHTML = `<i class="fas fa-play-circle text-indigo-400 text-3xl"></i>`;
+            }
+
+            // 圖片 Gallery（圖文筆記）
+            const gallery = document.getElementById('image-gallery');
+            const grid = document.getElementById('gallery-grid');
+            if (data.images && data.images.length > 0) {
+                gallery.classList.remove('hidden');
+                document.getElementById('gallery-count').textContent = `圖片畫廊 (${data.images.length})`;
+                grid.innerHTML = data.images.map((imgUrl, idx) => `
+                    <div class="relative group rounded-xl overflow-hidden bg-white/5 aspect-[3/4]">
+                        <img src="${imgUrl}" alt="圖片 ${idx+1}"
+                            class="w-full h-full object-cover transition group-hover:scale-105 cursor-pointer"
+                            onclick="window.open('${imgUrl}', '_blank')"
+                            loading="lazy">
+                        <button onclick="downloadSingleImage('${imgUrl}', ${idx})"
+                            class="absolute bottom-2 right-2 w-8 h-8 rounded-lg bg-black/60 hover:bg-black/80 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition">
+                            <i class="fas fa-download text-xs"></i>
+                        </button>
+                    </div>
+                `).join('');
+                // 顯示下載圖片按鈕
+                document.getElementById('btn-download-images').classList.remove('hidden');
+                document.getElementById('btn-download-video').classList.add('hidden');
+                document.getElementById('btn-download-audio').classList.add('hidden');
+            } else {
+                gallery.classList.add('hidden');
+                document.getElementById('btn-download-images').classList.add('hidden');
+                document.getElementById('btn-download-video').classList.remove('hidden');
+                document.getElementById('btn-download-audio').classList.remove('hidden');
+            }
+
             showToast('✅ 提取成功！', 'info');
+        }
+
+        // ========== 影片預覽 ==========
+        function playPreview() {
+            if (!extractedData) return;
+            const videoUrl = extractedData.video_direct_url || extractedData.video_url;
+            if (!videoUrl || videoUrl.startsWith('http') === false) {
+                showToast('暫無影片可預覽', 'info');
+                return;
+            }
+            const modal = document.getElementById('video-preview-modal');
+            const video = document.getElementById('preview-video');
+            video.src = videoUrl;
+            modal.classList.remove('hidden');
+        }
+
+        function closePreview() {
+            const modal = document.getElementById('video-preview-modal');
+            const video = document.getElementById('preview-video');
+            video.pause();
+            video.src = '';
+            modal.classList.add('hidden');
+        }
+
+        // ========== 圖片下載 ==========
+        async function downloadImages() {
+            if (!extractedData || !extractedData.images || extractedData.images.length === 0) {
+                showToast('❌ 暫無可下載的圖片', 'error');
+                return;
+            }
+            showToast(`⏳ 正在下載 ${extractedData.images.length} 張圖片...`, 'info');
+            for (let i = 0; i < extractedData.images.length; i++) {
+                try {
+                    const resp = await fetch(extractedData.images[i]);
+                    const blob = await resp.blob();
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `${(extractedData.title || 'xhs_image').replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '_')}_${i+1}.${blob.type.includes('png') ? 'png' : 'jpg'}`;
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                } catch (err) {
+                    console.error(`Image ${i} download error:`, err);
+                }
+            }
+            showToast(`✅ ${extractedData.images.length} 張圖片已下載`, 'info');
+        }
+
+        function downloadSingleImage(url, idx) {
+            fetch(url).then(r => r.blob()).then(blob => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `image_${idx+1}.${blob.type.includes('png') ? 'png' : 'jpg'}`;
+                a.click();
+                URL.revokeObjectURL(a.href);
+            }).catch(() => showToast('下載圖片失敗', 'error'));
+        }
+
+        // ========== 下載功能 ==========
+        function startExtractFrom(inputId) {
+            const val = document.getElementById(inputId).value.trim();
+            if (!val) { showToast('請先輸入連結', 'error'); return; }
+            document.getElementById('url-input').value = val;
+            startExtract();
+        }
+
+        async function startBatch() {
+            const text = document.getElementById('batch-urls').value.trim();
+            if (!text) return;
+            const urls = text.split('\n').map(s => s.trim()).filter(Boolean);
+            if (urls.length === 0) return;
+
+            const progress = document.getElementById('batch-progress');
+            const status = document.getElementById('batch-status');
+            const bar = document.getElementById('batch-bar');
+            const results = document.getElementById('batch-results');
+            progress.classList.remove('hidden');
+            results.innerHTML = '';
+            status.textContent = `0 / ${urls.length}`;
+            bar.style.width = '0%';
+
+            let completed = 0;
+            let batchUrls = [];
+            for (let i = 0; i < urls.length; i++) {
+                const url = urls[i];
+                const item = document.createElement('div');
+                item.className = 'flex items-center gap-3 text-sm p-3 rounded-xl bg-white/5';
+                item.innerHTML = `<span class="w-5 h-5 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin"></span><span class="text-gray-400 truncate flex-1">${url}</span>`;
+                results.appendChild(item);
+
+                try {
+                    const resp = await fetch(`${API_BASE}/api/extract`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url })
+                    });
+                    const data = await resp.json();
+                    if (!data.error) batchUrls.push(url);
+                    item.innerHTML = `<span class="text-green-400">✅</span><span class="text-gray-300 truncate flex-1">${data.title || '已提取'}</span><span class="text-xs text-gray-500">${data.platform || ''}</span>`;
+                } catch (err) {
+                    item.innerHTML = `<span class="text-red-400">❌</span><span class="text-gray-400 truncate flex-1">${url}</span><span class="text-xs text-red-400">失敗</span>`;
+                }
+                completed++;
+                status.textContent = `${completed} / ${urls.length}`;
+                bar.style.width = `${(completed / urls.length) * 100}%`;
+            }
+            showToast(`✅ 批次處理完成 (${completed}/${urls.length})`, 'info');
+            if (batchUrls.length > 0) {
+                document.getElementById('btn-batch-zip').classList.remove('hidden');
+            }
+        }
+
+        async function startRewrite() {
+            const text = document.getElementById('rewrite-input').value.trim();
+            const style = document.getElementById('rewrite-style').value;
+            if (!text) return;
+
+            const resultDiv = document.getElementById('rewrite-result');
+            resultDiv.innerHTML = '<div class="spinner" style="width:32px;height:32px;border-width:3px"></div>';
+
+            const styleMap = { formal: '正式嚴謹', casual: '輕鬆活潑', persuasive: '說服推廣', concise: '精簡扼要' };
+            const mockResults = {
+                formal: `【改寫結果 - 正式風格】\n\n${text}\n\n（此為模擬結果，後端部署完成後將使用真實 AI 改寫）`,
+                casual: `【改寫結果 - 輕鬆風格】\n\n${text}\n\n（此為模擬結果，後端部署完成後將使用真實 AI 改寫）`,
+                persuasive: `【改寫結果 - 說服風格】\n\n${text}\n\n（此為模擬結果，後端部署完成後將使用真實 AI 改寫）`,
+                concise: `【改寫結果 - 精簡風格】\n\n${text}\n\n（此為模擬結果，後端部署完成後將使用真實 AI 改寫）`,
+            };
+
+            await new Promise(r => setTimeout(r, 800));
+            resultDiv.textContent = mockResults[style] || mockResults.formal;
+            showToast('✅ 改寫完成！', 'info');
+        }
+
+        function copyRewriteResult() {
+            const text = document.getElementById('rewrite-result').textContent;
+            if (!text || text.includes('點擊')) { showToast('請先進行改寫', 'error'); return; }
+            navigator.clipboard.writeText(text).then(() => showToast('✅ 已複製改寫結果', 'info'))
+                .catch(() => showToast('複製失敗', 'error'));
         }
 
         // ========== 下載功能 ==========
@@ -586,16 +975,134 @@
             showToast('✅ 文案已下載', 'info');
         }
 
-        function downloadAudio() {
-            showToast('🔧 音訊下載功能即將上線', 'info');
+        async function downloadAudio() {
+            if (!extractedData || !extractedData.video_url) {
+                showToast('❌ 請先提取影片資訊', 'error');
+                return;
+            }
+            try {
+                showToast('⏳ 正在準備音訊下載...', 'info');
+                const response = await fetch(`${API_BASE}/api/download/audio`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url: extractedData.video_url,
+                        platform: extractedData.platform || ''
+                    })
+                });
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || '音訊下載失敗');
+                }
+                // 觸發瀏覽器下載
+                const blob = await response.blob();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                const filename = response.headers.get('Content-Disposition')
+                    ?.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)?.[1]?.replace(/['"]/g, '')
+                    || `${(extractedData.title || 'audio').replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '_')}.mp3`;
+                a.download = decodeURIComponent(filename);
+                a.click();
+                URL.revokeObjectURL(a.href);
+                showToast('✅ 音訊下載中', 'info');
+            } catch (err) {
+                console.error('Audio download error:', err);
+                showToast(`❌ ${err.message}`, 'error');
+            }
         }
 
-        function downloadVideo() {
-            showToast('🔧 影片下載功能即將上線', 'info');
+        async function downloadVideo() {
+            if (!extractedData || !extractedData.video_url) {
+                showToast('❌ 請先提取影片資訊', 'error');
+                return;
+            }
+            try {
+                showToast('⏳ 正在準備影片下載...', 'info');
+                const response = await fetch(`${API_BASE}/api/download/video`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        url: extractedData.video_url,
+                        platform: extractedData.platform || ''
+                    })
+                });
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || '影片下載失敗');
+                }
+                const blob = await response.blob();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                const filename = response.headers.get('Content-Disposition')
+                    ?.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)?.[1]?.replace(/['"]/g, '')
+                    || `${(extractedData.title || 'video').replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '_')}.mp4`;
+                a.download = decodeURIComponent(filename);
+                a.click();
+                URL.revokeObjectURL(a.href);
+                showToast('✅ 影片下載中', 'info');
+            } catch (err) {
+                console.error('Video download error:', err);
+                showToast(`❌ ${err.message}`, 'error');
+            }
         }
 
-        function downloadAll() {
-            showToast('🔧 打包下載功能即將上線', 'info');
+        async function downloadAll() {
+            if (!extractedData || !extractedData.video_url) {
+                showToast('❌ 請先提取影片資訊', 'error');
+                return;
+            }
+            try {
+                showToast('⏳ 正在打包下載...', 'info');
+                const response = await fetch(`${API_BASE}/api/download/zip`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        urls: [extractedData.video_url],
+                        platform: extractedData.platform || ''
+                    })
+                });
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || '打包下載失敗');
+                }
+                const blob = await response.blob();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'downloads.zip';
+                a.click();
+                URL.revokeObjectURL(a.href);
+                showToast('✅ 打包下載中', 'info');
+            } catch (err) {
+                console.error('Zip download error:', err);
+                showToast(`❌ ${err.message}`, 'error');
+            }
+        }
+
+        async function downloadBatchZip() {
+            const text = document.getElementById('batch-urls').value.trim();
+            const urls = text.split('\n').map(s => s.trim()).filter(Boolean);
+            if (urls.length === 0) return;
+            try {
+                showToast(`⏳ 正在打包 ${urls.length} 個影片...`, 'info');
+                const response = await fetch(`${API_BASE}/api/download/zip`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ urls })
+                });
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || '打包失敗');
+                }
+                const blob = await response.blob();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'batch_download.zip';
+                a.click();
+                URL.revokeObjectURL(a.href);
+                showToast('✅ 批次 ZIP 下載中', 'info');
+            } catch (err) {
+                showToast(`❌ ${err.message}`, 'error');
+            }
         }
     </script>
 </body>
