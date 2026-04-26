@@ -934,17 +934,27 @@
             const resultDiv = document.getElementById('rewrite-result');
             resultDiv.innerHTML = '<div class="spinner" style="width:32px;height:32px;border-width:3px"></div>';
 
-            const styleMap = { formal: '正式嚴謹', casual: '輕鬆活潑', persuasive: '說服推廣', concise: '精簡扼要' };
-            const mockResults = {
-                formal: `【改寫結果 - 正式風格】\n\n${text}\n\n（此為模擬結果，後端部署完成後將使用真實 AI 改寫）`,
-                casual: `【改寫結果 - 輕鬆風格】\n\n${text}\n\n（此為模擬結果，後端部署完成後將使用真實 AI 改寫）`,
-                persuasive: `【改寫結果 - 說服風格】\n\n${text}\n\n（此為模擬結果，後端部署完成後將使用真實 AI 改寫）`,
-                concise: `【改寫結果 - 精簡風格】\n\n${text}\n\n（此為模擬結果，後端部署完成後將使用真實 AI 改寫）`,
-            };
-
-            await new Promise(r => setTimeout(r, 800));
-            resultDiv.textContent = mockResults[style] || mockResults.formal;
-            showToast('✅ 改寫完成！', 'info');
+            try {
+                const resp = await fetch(`${API_BASE}/api/rewrite`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, style })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    resultDiv.textContent = data.result;
+                    showToast('✅ 改寫完成！', 'info');
+                } else {
+                    resultDiv.textContent = `❌ ${data.error || '改寫失敗'}`;
+                    showToast('❌ ' + (data.error || '改寫失敗'), 'error');
+                }
+            } catch (err) {
+                // 後端不可用，使用前端簡單改寫做為降級
+                const styleMap = { formal: '正式風格', casual: '輕鬆風格', persuasive: '說服風格', concise: '精簡風格' };
+                const prefix = `【${styleMap[style] || '改寫'}】\n\n`;
+                resultDiv.textContent = prefix + text + '\n\n（後端部署後將使用 AI 真實改寫）';
+                showToast('✅ 改寫完成（離線模式）', 'info');
+            }
         }
 
         function copyRewriteResult() {

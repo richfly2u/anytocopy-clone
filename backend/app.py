@@ -407,7 +407,75 @@ def _fallback_extract(url):
 
 
 # ============================================
-# SPA Page Routes (SEO metadata for frontend)
+# Phase 3: AI Tools (Rewrite, OCR, Watermark)
+# ============================================
+
+from utils.ai_tools import rewrite_text, ocr_image, remove_logo
+
+
+@app.route('/api/rewrite', methods=['POST'])
+def api_rewrite():
+    """AI 文案改寫。Accepts: {\"text\": \"...\", \"style\": \"casual\"}"""
+    data = request.get_json()
+    if not data or 'text' not in data:
+        return jsonify({'success': False, 'error': '請提供文案內容'}), 400
+
+    text = data['text'].strip()
+    style = data.get('style', 'casual')
+
+    if not text:
+        return jsonify({'success': False, 'error': '文案內容不能為空'}), 400
+
+    result = rewrite_text(text, style)
+    return jsonify(result)
+
+
+@app.route('/api/ocr', methods=['POST'])
+def api_ocr():
+    """圖片 OCR。Accepts: {\"image_url\": \"...\", \"language\": \"zh\"} 或 multipart file"""
+    if request.content_type and 'multipart' in request.content_type:
+        if 'image' not in request.files:
+            return jsonify({'success': False, 'error': '請上傳圖片'}), 400
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': '請選擇圖片'}), 400
+
+        temp_path = os.path.join(tempfile.mkdtemp(), file.filename)
+        file.save(temp_path)
+        language = request.form.get('language', 'zh')
+        result = ocr_image(temp_path, language)
+        os.unlink(temp_path)
+        return jsonify(result)
+
+    data = request.get_json()
+    if not data or 'image_url' not in data:
+        return jsonify({'success': False, 'error': '請提供 image_url 或上傳圖片'}), 400
+
+    language = data.get('language', 'zh')
+    result = ocr_image(data['image_url'], language)
+    return jsonify(result)
+
+
+@app.route('/api/watermark/remove', methods=['POST'])
+def api_remove_watermark():
+    """去水印。Accepts: {\"image_url\": \"...\", \"method\": \"inpaint\"}"""
+    data = request.get_json()
+    if not data or 'image_url' not in data:
+        return jsonify({'success': False, 'error': '請提供 image_url'}), 400
+
+    method = data.get('method', 'inpaint')
+    result = remove_logo(data['image_url'], method=method)
+    if not result.get('success'):
+        return jsonify(result), 400
+
+    return send_file(
+        result['output_path'],
+        mimetype='image/png',
+        as_attachment=True,
+        download_name='watermark_removed.png',
+    )
+
+
 # ============================================
 
 @app.route('/api/pages', methods=['GET'])
