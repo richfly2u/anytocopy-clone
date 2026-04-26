@@ -1,32 +1,54 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-抖音 Douyin platform handler.
-三層降級策略:
-1. yt-dlp 直接提取（最簡單，但常被抖音 WAF 擋）
-2. CDP 攔截影片 URL（需 Windows + Chromium CDP，類似小紅書方案）
-3. 第三方 API 回退
+抖音 Douyin platform handler (v2).
+Two-tier strategy:
+1. yt-dlp --dump-json to extract direct video URL (primary)
+2. CDP intercept (fallback, Windows + Chromium port 9333)
+
+Output:
+  platform: '抖音'
+  note_type: 'video' (douyin is always video)
+  video_direct_url: direct CDN video URL
+  can_download_video: True
 """
 
 import json
 import os
 import re
+import sys
 import time
 from pathlib import Path
 
 import requests
 
+CDP_PORT = int(os.environ.get('DOUYIN_CDP_PORT', '9333'))
+CDP_API = f"http://127.0.0.1:{CDP_PORT}"
+TIMEOUT = 45
+
+HEADERS = {
+    'User-Agent': (
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) '
+        'Chrome/120.0.0.0 Safari/537.36'
+    ),
+    'Referer': 'https://www.douyin.com/',
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+}
+
+
 # ============================================
-# 抖音 URL 解析
+# URL helpers
 # ============================================
 
 def get_video_id(url):
-    """從抖音 URL 提取影片 ID"""
+    """Extract video ID from douyin URL"""
     # douyin.com/video/xxxxx
     m = re.search(r'/video/(\d+)', url)
     if m:
         return m.group(1)
-    # v.douyin.com/xxxxx (短連結，需要重定向)
+    # v.douyin.com/xxxxx (short link, needs redirect)
     m = re.search(r'v\.douyin\.com/(\w+)', url)
     if m:
         return {'short': m.group(1)}
@@ -34,37 +56,32 @@ def get_video_id(url):
 
 
 def resolve_short_url(url):
-    """解析抖音短鏈接，取得真實 URL"""
+    """Resolve short douyin links to full URL"""
     if 'v.douyin.com' in url.lower() or 'iesdouyin.com' in url.lower():
         try:
-            resp = requests.get(url, headers=_headers(), allow_redirects=True, timeout=15)
+            resp = requests.get(url, headers=HEADERS, allow_redirects=True, timeout=15)
             return resp.url
         except Exception:
             pass
     return url
 
 
-def _headers():
-    return {
-        'User-Agent': (
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-            'AppleWebKit/537.36 (KHTML, like Gecko) '
-            'Chrome/120.0.0.0 Safari/537.36'
-        ),
-        'Referer': 'https://www.douyin.com/',
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-    }
+def _is_windows():
+    return os.name == 'nt' or sys.platform.startswith('win')
 
 
 # ============================================
-# 策略 1: yt-dlp 提取（首選）
+# Strategy 1: yt-dlp (primary)
 # ============================================
 
 def extract_via_ytdlp(url):
-    """使用 yt-dlp 嘗試提取抖音影片資訊"""
+    """
+    Use yt-dlp's Douyin extractor to get the direct video URL.
+    Returns dict with 'video_direct_url' on success, or 'error' on failure.
+    """
     try:
         import yt_dlp
+
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
@@ -73,77 +90,110 @@ def extract_via_ytdlp(url):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
-        title = info.get('title', 'Untitled')
-        author = info.get('uploader', info.get('creator', 'Unknown'))
+        # Extract metadata
+        title = info.get('title', info.get('description', '抖音视频')) or '抖音视频'
+        author = info.get('uploader', info.get('creator', '')) or ''
         duration = info.get('duration', 0)
         thumbnail = info.get('thumbnail', '')
-        description = (info.get('description') or '')[:2000]
 
-        # 構建文案
-        transcript_parts = [f"[抖音] 影片資訊提取成功\n"]
-        if description:
-            transcript_parts.append(f"📝 描述:\n{description}\n")
-        transcript_parts.append(
-            f"⚠️ 文案提取功能開發中\n"
-            f"此平台的語音識別需下載影片後進行，將透過 Whisper AI 支援。"
-        )
+        # Extract the best direct video URL from formats
+        # yt-dlp douyin extractor returns formats with direct CDN URLs
+        video_direct_url = None
+        formats = info.get('formats', [])
+
+        if formats:
+            # Prefer highest quality with video codec
+            # Sort by quality (height) descending, prefer those with both video+audio
+            best = None
+            for f in formats:
+                vcodec = f.get('vcodec', 'none')
+                acodec = f.get('acodec', 'none')
+                if vcodec != 'none':
+                    height = f.get('height', 0)
+                    if best is None or height > best.get('height', 0):
+                        best = f
+
+            if best and best.get('url'):
+                video_direct_url = best['url']
+            elif not best and formats[0].get('url'):
+                video_direct_url = formats[0]['url']
+
+        # Also try direct 'url' key (some extractors put it at top level)
+        if not video_direct_url and info.get('url'):
+            video_direct_url = info['url']
+
+        if not video_direct_url:
+            return {'error': 'yt-dlp未提取到抖音视频URL', '_method': 'yt-dlp'}
 
         return {
             'platform': '抖音',
             'platformIcon': 'fa-brands fa-tiktok',
             'title': title,
             'author': author,
-            'transcript': '\n'.join(transcript_parts),
+            'transcript': (
+                f'[抖音] 视频提取成功\n\n'
+                f'标题: {title}\n'
+                f'作者: {author}\n'
+                f'时长: {duration}秒\n\n'
+                f'⚠️ 文案提取功能开发中\n'
+                f'此平台的语音识别需下载视频后透过 Whisper AI 支援。'
+            ),
             'video_url': url,
+            'video_direct_url': video_direct_url,
             'duration': duration,
             'thumbnail': thumbnail,
+            'note_type': 'video',
             'can_download_video': True,
-            'can_download_audio': duration and duration < 3600,
+            'can_download_audio': bool(duration) and duration < 3600,
             '_method': 'yt-dlp',
         }
     except Exception as e:
-        return {'error': f'yt-dlp抖音提取失敗: {str(e)}', '_method': 'yt-dlp'}
+        return {'error': f'yt-dlp抖音提取失败: {str(e)}', '_method': 'yt-dlp'}
 
 
 # ============================================
-# 策略 2: CDP 攔截（需 Windows + Chromium）
+# Strategy 2: CDP intercept (fallback, Windows)
 # ============================================
-
-def _is_windows():
-    return os.name == 'nt' or sys.platform.startswith('win')
-
 
 def extract_via_cdp(url):
     """
-    使用 CDP 攔截抖音影片 URL。
-    類似小紅書方案：開新分頁 → 啟用 Network → Navigate → 攔截影片
+    Use CDP (Chrome DevTools Protocol) to intercept douyin video URLs.
+    Opens page → enables Network → navigates → intercepts video responses.
     """
     resolved = resolve_short_url(url)
-    video_id = get_video_id(resolved) if resolved != url else None
 
-    CDP_PORT = 9333
-    HTTP_API = f"http://127.0.0.1:{CDP_PORT}"
-    TIMEOUT = 45
-
-    # 確認 CDP 可用
+    # Verify CDP is available
     try:
-        resp = requests.get(f"{HTTP_API}/json/version", timeout=3)
+        resp = requests.get(f"{CDP_API}/json/version", timeout=3)
         if resp.status_code != 200:
-            return {'error': 'CDP 服務不可用'}
+            return {'error': 'CDP 服务不可用'}
     except Exception:
-        return {'error': 'CDP 服務未啟動', 'hint': '請先啟動 Chromium CDP (port 9333)'}
+        return {'error': 'CDP 服务未启动', 'hint': f'请先启动 Chromium CDP (port {CDP_PORT})'}
 
     import websocket as ws_lib
     from websocket import WebSocketTimeoutException
 
-    # 建立新分頁
+    # Create a new page tab
+    page_id = None
     try:
-        resp = requests.put(f"{HTTP_API}/json/new", timeout=10)
-        page = resp.json()
-        page_id = page['id']
-        ws_url = f"ws://127.0.0.1:{CDP_PORT}/devtools/page/{page_id}"
+        # Try to find an existing usable tab first
+        try:
+            pages = requests.get(f"{CDP_API}/json", timeout=5).json()
+            for p in pages:
+                pu = p.get('url', '')
+                if 'devtools://' not in pu and 'about:blank' not in pu:
+                    page_id = p['id']
+                    break
+        except Exception:
+            pass
+
+        if not page_id:
+            resp = requests.put(f"{CDP_API}/json/new", timeout=10)
+            page_id = resp.json()['id']
     except Exception as e:
-        return {'error': f'建立CDP分頁失敗: {str(e)}'}
+        return {'error': f'建立CDP分页失败: {str(e)}'}
+
+    ws_url = f"ws://127.0.0.1:{CDP_PORT}/devtools/page/{page_id}"
 
     try:
         ws = ws_lib.create_connection(ws_url, timeout=15)
@@ -157,63 +207,71 @@ def extract_via_cdp(url):
                 msg['params'] = params
             ws.send(json.dumps(msg))
 
-        # 啟用 Network + Page
+        # Enable Network + Page
         cdp_send('Network.enable')
         cdp_send('Page.enable')
 
-        # Drain 初始事件
+        # Drain initial events
         ws.settimeout(0.3)
         for _ in range(15):
             try:
                 ws.recv()
-            except (WebSocketTimeoutException, Exception):
+            except Exception:
                 break
 
-        # Navigate 到目標 URL
+        # Navigate to target URL
         ws.settimeout(TIMEOUT)
         cdp_send('Page.navigate', {'url': resolved})
 
-        # 攔截影片
+        # Intercept video responses
         video_url = None
-        mime_type = None
-        page_title = '抖音影片'
-        start = time.time()
+        page_title = '抖音视频'
+        page_author = ''
+        started = time.time()
 
-        while time.time() - start < TIMEOUT:
+        while time.time() - started < TIMEOUT:
             try:
                 ws.settimeout(0.5)
                 msg = json.loads(ws.recv())
                 method = msg.get('method', '')
 
                 if method == 'Network.responseReceived':
-                    resp_data = msg['params']['response']
-                    r_url = resp_data.get('url', '')
-                    r_mime = resp_data.get('mimeType', '')
+                    r = msg['params']['response']
+                    r_url = r.get('url', '')
+                    r_mime = r.get('mimeType', '')
 
-                    # 抖音影片特徵：douyin 域名 + video mime 或 .mp4
-                    if ('video' in r_mime or '.mp4' in r_url):
+                    # Douyin video: video mime, .mp4 extension, or aweme/v1/play/
+                    if ('video' in r_mime
+                            or '.mp4' in r_url
+                            or 'aweme/v1/play/' in r_url):
                         if not video_url:
                             video_url = r_url
-                            mime_type = r_mime
-                            # 繼續 collect 更多影片 URL，取最後一個（最高畫質）
                         else:
-                            video_url = r_url  # 後面的通常畫質更高
+                            video_url = r_url  # later = usually higher quality
 
                 elif method == 'Page.frameStoppedLoading':
-                    # 頁面載入完成後，等 2 秒繼續收集網路請求
-                    time.sleep(2)
-                    # 嘗試取得頁面標題
-                    cdp_send('Runtime.evaluate', {
-                        'expression': 'document.title'
-                    })
-                    # 但不中斷循環，繼續收集
+                    # 頁面載入完成 → 用 JS 提取作者
+                    try:
+                        js_author = (
+                            "(()=>{"
+                            "const el=document.querySelector('.author')||"
+                            "document.querySelector('[class*=\"author\"]')||"
+                            "document.querySelector('meta[name=\"author\"]');"
+                            "return el?el.textContent||el.content||'':''"
+                            "})()"
+                        )
+                        cdp_send('Runtime.evaluate', {'expression': js_author})
+                    except Exception:
+                        pass
 
-                elif method == 'Runtime.evaluate' and video_url:
-                    # 拿到標題後可以結束
+                elif method == 'Runtime.evaluate':
                     try:
                         val = msg.get('result', {}).get('result', {}).get('value', '')
                         if val:
-                            page_title = val
+                            if page_title == '抖音视频':
+                                page_title = val
+                            else:
+                                page_author = val
                     except Exception:
                         pass
 
@@ -224,94 +282,72 @@ def extract_via_cdp(url):
 
         ws.close()
 
-        # 清理分頁
+        # Close the page tab
         try:
-            requests.get(f"{HTTP_API}/json/close/{page_id}", timeout=3)
+            requests.get(f"{CDP_API}/json/close/{page_id}", timeout=3)
         except Exception:
             pass
 
         if not video_url:
-            return {'error': '未攔截到抖音影片 URL', '_method': 'cdp'}
+            return {'error': '未拦截到抖音视频URL', '_method': 'cdp'}
 
         return {
             'platform': '抖音',
             'platformIcon': 'fa-brands fa-tiktok',
-            'title': page_title or '抖音影片',
-            'author': '',
-            'transcript': f'[抖音] 影片 URL 已攔截完成\n可下載無浮水印影片。\n\n⚠️ 文案提取功能開發中\n此平台的語音識別需透過 Whisper AI 支援。',
-            'video_url': video_url,
+            'title': page_title or '抖音视频',
+            'author': page_author or '',
+            'video_direct_url': video_url,
+            'note_type': 'video',
             'can_download_video': True,
             '_method': 'cdp',
-            '_video_direct_url': video_url,
         }
     except Exception as e:
-        # 確保清理
         try:
-            requests.get(f"{HTTP_API}/json/close/{page_id}", timeout=3)
+            requests.get(f"{CDP_API}/json/close/{page_id}", timeout=3)
         except Exception:
             pass
-        return {'error': f'CDP 攔截失敗: {str(e)}', '_method': 'cdp'}
+        return {'error': f'CDP拦截失败: {str(e)}', '_method': 'cdp'}
 
 
 # ============================================
-# 策略 3: 第三方 API 降級
-# ============================================
-
-def extract_via_third_party(url):
-    """嘗試第三方抖音解析 API"""
-    apis = [
-        f"https://api.douyin.wtf/api?url={url}",
-    ]
-
-    for api_url in apis:
-        try:
-            resp = requests.get(api_url, headers=_headers(), timeout=15)
-            data = resp.json()
-            if data.get('video_url') or data.get('url'):
-                video_url = data.get('video_url') or data.get('url')
-                return {
-                    'platform': '抖音',
-                    'platformIcon': 'fa-brands fa-tiktok',
-                    'title': data.get('title', '抖音影片'),
-                    'author': data.get('author', ''),
-                    'transcript': f'[抖音] 影片資訊提取成功（第三方API）\n可下載影片。',
-                    'video_url': video_url,
-                    'can_download_video': True,
-                    '_method': 'third-party',
-                }
-        except Exception:
-            continue
-
-    return {'error': '所有抖音提取方式均失敗', '_method': 'none'}
-
-
-# ============================================
-# 主入口
+# Main entry point
 # ============================================
 
 def extract(url):
     """
-    抖音主提取函數。
-    三層降級：yt-dlp → CDP 攔截 → 第三方 API
-    """
-    # 策略 1: yt-dlp
-    result = extract_via_ytdlp(url)
-    if 'error' not in result:
-        return result
+    Douyin main extract function.
+    Two-tier fallback: CDP → yt-dlp.
 
-    # 策略 2: CDP（僅 Windows）
+    Windows: CDP first (higher chance of watermark-free CDN URL) → yt-dlp
+    Non-Windows: yt-dlp only
+
+    Returns dict with:
+      platform, note_type, video_direct_url, can_download_video, ...
+    """
+    # Strategy 1: CDP (Windows only, prefer for watermark-free CDN URLs)
     if _is_windows():
         result = extract_via_cdp(url)
         if 'error' not in result:
             return result
 
-    # 策略 3: 第三方 API
-    result = extract_via_third_party(url)
-    return result
+    # Strategy 2: yt-dlp (works cross-platform)
+    result = extract_via_ytdlp(url)
+    if 'error' not in result:
+        return result
+
+    # Both failed
+    return {
+        'platform': '抖音',
+        'platformIcon': 'fa-brands fa-tiktok',
+        'title': '抖音视频',
+        'note_type': 'video',
+        'can_download_video': False,
+        'error': '所有抖音提取方式均失败',
+        '_method': 'none',
+    }
 
 
 if __name__ == '__main__':
-    import sys
     test_url = sys.argv[1] if len(sys.argv) > 1 else None
     if test_url:
         result = extract(test_url)

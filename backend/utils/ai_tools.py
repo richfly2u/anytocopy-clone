@@ -168,88 +168,19 @@ def ocr_image(image_url, language='zh'):
 # 3. 去水印 (影像處理)
 # ============================================
 
-def remove_logo(image_url, output_path=None, method='inpaint'):
+def remove_logo(image_url, output_path=None, method='auto'):
     """
-    去水印 — 使用 OpenCV + inpainting。
-    對於影片水印，需要 frame-by-frame 處理。
+    去水印 — 委派到 watermark 模組。
 
     method:
-    - 'inpaint': 用 OpenCV 的 inpainting（需要水印位置遮罩）
+    - 'auto': 自動選擇（Lama AI 優先，OpenCV fallback）
+    - 'lama': 強制使用 Lama AI 模型
+    - 'inpaint': OpenCV inpainting（需遮罩）
     - 'blur': 模糊水印區域
     - 'crop': 裁切掉水印區域
     """
-    try:
-        import cv2
-        import numpy as np
-    except ImportError:
-        return {'success': False, 'error': '需要安裝 opencv-python: pip install opencv-python-headless'}
-
-    # 下載或讀取圖片
-    if os.path.exists(image_url):
-        img = cv2.imread(image_url)
-        if img is None:
-            return {'success': False, 'error': '無法讀取圖片檔案'}
-    else:
-        try:
-            resp = requests.get(image_url, stream=True, timeout=30)
-            resp.raise_for_status()
-            img_data = np.frombuffer(resp.content, np.uint8)
-            img = cv2.imdecode(img_data, cv2.IMREAD_COLOR)
-        except Exception as e:
-            return {'success': False, 'error': f'下載圖片失敗: {str(e)}'}
-
-    h, w = img.shape[:2]
-
-    if method == 'crop':
-        # 裁切底部 10%（常見水印位置）
-        crop_h = int(h * 0.9)
-        result = img[:crop_h, :]
-    elif method == 'blur':
-        # 模糊底部 8%
-        mask_h = int(h * 0.08)
-        roi = img[h - mask_h:h, :]
-        blurred = cv2.GaussianBlur(roi, (51, 51), 0)
-        result = img.copy()
-        result[h - mask_h:h, :] = blurred
-    elif method == 'inpaint':
-        # 需要遮罩 — 假設水印在右下角或底部
-        mask = np.zeros((h, w), dtype=np.uint8)
-
-        # 策略 1: 檢測底部亮色/白色區域（常見水印）
-        bottom_strip = img[int(h * 0.85):h, :]
-        gray = cv2.cvtColor(bottom_strip, cv2.COLOR_BGR2GRAY)
-        _, bright_mask = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
-        mask[int(h * 0.85):h, :] = bright_mask
-
-        # 策略 2: 檢測右下角的半透明水印
-        corner = img[h - 80:h, w - 200:w]
-        corner_gray = cv2.cvtColor(corner, cv2.COLOR_BGR2GRAY)
-        _, corner_mask = cv2.threshold(corner_gray, 180, 255, cv2.THRESH_BINARY)
-        mask[h - 80:h, w - 200:w] = np.maximum(mask[h - 80:h, w - 200:w], corner_mask)
-
-        # 執行 inpainting
-        result = cv2.inpaint(img, mask, inpaintRadius=5, flags=cv2.INPAINT_TELEA)
-    else:
-        return {'success': False, 'error': f'不支援的方法: {method}'}
-
-    # 輸出
-    if output_path is None:
-        from tempfile import NamedTemporaryFile
-        tmp = NamedTemporaryFile(suffix='.png', delete=False)
-        output_path = tmp.name
-        tmp.close()
-
-    cv2.imwrite(output_path, result)
-    file_size = os.path.getsize(output_path)
-
-    return {
-        'success': True,
-        'output_path': output_path,
-        'file_size': file_size,
-        'width': result.shape[1],
-        'height': result.shape[0],
-        'method': method,
-    }
+    from utils.watermark import remove_watermark
+    return remove_watermark(image_url, output_path, method)
 
 
 # ============================================

@@ -26,6 +26,18 @@ import zipfile
 from pathlib import Path
 from urllib.parse import urlparse
 
+# Load .env if exists
+_env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+if os.path.exists(_env_path):
+    with open(_env_path, 'r', encoding='utf-8') as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith('#') and '=' in _line:
+                _k, _v = _line.split('=', 1)
+                _k, _v = _k.strip(), _v.strip().strip('"').strip("'")
+                if _v and not os.environ.get(_k):
+                    os.environ[_k] = _v
+
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 
@@ -125,15 +137,73 @@ def download_video_endpoint():
     """
     Download video from URL.
     Accepts: {"url": "...", "platform": "youtube"}
+    Also accepts: {"video_direct_url": "https://..."} for direct CDN downloads
     Returns: video file
     """
     data = request.get_json()
-    if not data or 'url' not in data:
+    if not data or ('url' not in data and 'video_direct_url' not in data):
         return jsonify({'error': '请提供URL'}), 400
 
-    url = data['url']
-    platform = data.get('platform', detect_platform(url))
+    url = data.get('url', '')
     output_dir = tempfile.mkdtemp()
+
+    # Handle direct CDN URL download (e.g. douyin video_direct_url passed directly)
+    video_direct_url = data.get('video_direct_url')
+    if video_direct_url:
+        import requests as _req
+        try:
+            resp = _req.get(video_direct_url, stream=True, timeout=60)
+            resp.raise_for_status()
+            ext = 'mp4'
+            filepath = os.path.join(output_dir, f'video.{ext}')
+            with open(filepath, 'wb') as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            filename = data.get('filename', 'video')
+            return send_file(filepath, as_attachment=True,
+                           download_name=f"{filename[:30]}.{ext}",
+                           mimetype='video/mp4')
+        except Exception as e:
+            import shutil
+            shutil.rmtree(output_dir, ignore_errors=True)
+            return jsonify({'error': f'直接下載失敗: {str(e)}'}), 500
+
+    platform = data.get('platform', detect_platform(url))
+
+    # 小紅書 / 抖音走 platform handler
+    if platform == 'xiaohongshu':
+        from platforms.xiaohongshu import extract as xhs_extract
+        info = xhs_extract(url)
+        if 'video_direct_url' in info:
+            # 直接下載 CDN URL
+            import requests as _req
+            resp = _req.get(info['video_direct_url'], stream=True, timeout=60)
+            resp.raise_for_status()
+            ext = 'mp4'
+            filepath = os.path.join(output_dir, f"xhs_video.{ext}")
+            with open(filepath, 'wb') as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            return send_file(filepath, as_attachment=True,
+                           download_name=f"{info.get('title','xhs')[:30]}.{ext}",
+                           mimetype='video/mp4')
+        return jsonify({'error': '無法取得小紅書影片 URL'}), 400
+
+    if platform == 'douyin':
+        from platforms.douyin import extract as dy_extract
+        info = dy_extract(url)
+        if 'video_direct_url' in info:
+            import requests as _req
+            resp = _req.get(info['video_direct_url'], stream=True, timeout=60)
+            resp.raise_for_status()
+            filepath = os.path.join(output_dir, 'douyin_video.mp4')
+            with open(filepath, 'wb') as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            return send_file(filepath, as_attachment=True,
+                           download_name=f"{info.get('title','douyin')[:30]}.mp4",
+                           mimetype='video/mp4')
+        return jsonify({'error': '無法取得抖音影片 URL'}), 400
 
     try:
         import yt_dlp
@@ -226,6 +296,64 @@ def download_text():
     )
 
 
+@app.route('/api/download/images', methods=['POST'])
+def download_images_endpoint():
+    """
+    打包下載小紅書圖文筆記的全部圖片。
+    Accepts: {"images": ["url1", "url2", ...], "title": "筆記標題"}
+    Returns: ZIP file containing all images
+    """
+    data = request.get_json()
+    if not data or 'images' not in data:
+        return jsonify({'error': '请提供圖片列表'}), 400
+
+    images = data['images']
+    if not images or len(images) == 0:
+        return jsonify({'error': '圖片列表為空'}), 400
+
+    title = data.get('title', 'xiaohongshu_images')[:50]
+    output_dir = tempfile.mkdtemp()
+    zip_path = os.path.join(output_dir, f'{title}.zip')
+
+    try:
+        import requests as _req
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for i, img_url in enumerate(images):
+                try:
+                    resp = _req.get(img_url, stream=True, timeout=30)
+                    resp.raise_for_status()
+                    ext = 'jpg'
+                    ct = resp.headers.get('Content-Type', '')
+                    if 'png' in ct:
+                        ext = 'png'
+                    elif 'webp' in ct:
+                        ext = 'webp'
+                    elif 'gif' in ct:
+                        ext = 'gif'
+                    temp_path = os.path.join(output_dir, f'image_{i+1}.{ext}')
+                    with open(temp_path, 'wb') as f:
+                        for chunk in resp.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                    zf.write(temp_path, arcname=f'image_{i+1}.{ext}')
+                except Exception as e:
+                    print(f"[DownloadImages] Failed to download image {i}: {e}")
+                    continue
+
+        if not os.path.exists(zip_path) or os.path.getsize(zip_path) < 100:
+            return jsonify({'error': '圖片打包失败'}), 400
+
+        return send_file(
+            zip_path,
+            as_attachment=True,
+            download_name=f'{title}.zip',
+            mimetype='application/zip',
+        )
+    except Exception as e:
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)
+        return jsonify({'error': f'圖片打包失败: {str(e)}'}), 500
+
+
 @app.route('/api/download/zip', methods=['POST'])
 def download_zip():
     """
@@ -307,25 +435,7 @@ def _handle_douyin(url):
 
 
 def _handle_xiaohongshu(url):
-    """Route to Xiaohongshu handler.
-    First tries Windows XHS Proxy (port 5001), then falls back to local CDP."""
-    # Try Windows XHS Proxy first
-    try:
-        import urllib.request as _urllib_req
-        req = _urllib_req.Request(
-            'http://172.22.199.229:5001',
-            data=json.dumps({'url': url}).encode('utf-8'),
-            headers={'Content-Type': 'application/json'},
-            method='POST'
-        )
-        resp = _urllib_req.urlopen(req, timeout=120)
-        result = json.loads(resp.read().decode('utf-8'))
-        return result
-    except Exception as proxy_err:
-        print(f"[XHS] Proxy unavailable: {proxy_err}")
-        pass
-
-    # Fallback: try local CDP method (Windows only)
+    """Route to Xiaohongshu handler — directly uses local CDP extract."""
     try:
         from platforms.xiaohongshu import extract as xhs_extract
         result = xhs_extract(url)
@@ -335,7 +445,7 @@ def _handle_xiaohongshu(url):
             'platform': 'xiaohongshu',
             'platformIcon': 'fa-regular fa-note-sticky',
             'transcript': '小紅書影片下載需要本機輔助。\\n'
-                          '請啟動 XHS Proxy: python D:\\\\xhs_downloads\\\\xhs_proxy.py',
+                          '請參考 README 啟動相關服務。',
             'error': str(e),
         }
 
@@ -458,12 +568,22 @@ def api_ocr():
 
 @app.route('/api/watermark/remove', methods=['POST'])
 def api_remove_watermark():
-    """去水印。Accepts: {\"image_url\": \"...\", \"method\": \"inpaint\"}"""
+    """去水印。Accepts: {\"image_url\": \"...\", \"method\": \"auto\"}"""
     data = request.get_json()
     if not data or 'image_url' not in data:
         return jsonify({'success': False, 'error': '請提供 image_url'}), 400
 
-    method = data.get('method', 'inpaint')
+    method = data.get('method', 'auto')
+
+    # Render 環境 — Lama 不可用，提示使用者
+    ON_RENDER = os.environ.get('RENDER', '').lower() in ('1', 'true')
+    if ON_RENDER and method in ('auto', 'lama'):
+        return jsonify({
+            'success': False,
+            'error': 'AI 去水印僅限本地模式可用，請在本機啟動 Flask 後端使用。',
+            'local_methods': ['inpaint', 'blur', 'crop'],
+        }), 400
+
     result = remove_logo(data['image_url'], method=method)
     if not result.get('success'):
         return jsonify(result), 400
@@ -477,6 +597,110 @@ def api_remove_watermark():
 
 
 # ============================================
+# Phase 4: Local File Extraction (Video/Audio Upload)
+# ============================================
+
+
+@app.route('/api/extract/video', methods=['POST'])
+def api_extract_video():
+    """上傳本地影片檔案，提取文案（Whisper 語音辨識）"""
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': '請上傳影片檔案'}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'success': False, 'error': '請選擇影片檔案'}), 400
+
+    output_dir = tempfile.mkdtemp()
+    try:
+        # 保存上傳檔案
+        ext = Path(file.filename).suffix.lower()
+        allowed_exts = {'.mp4', '.avi', '.mov', '.mkv', '.webm', '.flv', '.wmv', '.m4v'}
+        if ext not in allowed_exts:
+            return jsonify({'success': False, 'error': f'不支援的影片格式: {ext}'}), 400
+
+        input_path = os.path.join(output_dir, f'input{ext}')
+        file.save(input_path)
+
+        # 嘗試 Whisper（如果有安裝）
+        transcript = _transcribe_audio(input_path)
+
+        return jsonify({
+            'success': True,
+            'filename': file.filename,
+            'transcript': transcript,
+            'method': 'whisper' if transcript else 'unsupported',
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'影片處理失敗: {str(e)}'}), 500
+    finally:
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)
+
+
+@app.route('/api/extract/audio', methods=['POST'])
+def api_extract_audio():
+    """上傳本地音訊檔案，轉文字（Whisper 語音辨識）"""
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': '請上傳音訊檔案'}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'success': False, 'error': '請選擇音訊檔案'}), 400
+
+    output_dir = tempfile.mkdtemp()
+    try:
+        ext = Path(file.filename).suffix.lower()
+        allowed_exts = {'.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac', '.wma'}
+        if ext not in allowed_exts:
+            return jsonify({'success': False, 'error': f'不支援的音訊格式: {ext}'}), 400
+
+        input_path = os.path.join(output_dir, f'input{ext}')
+        file.save(input_path)
+
+        transcript = _transcribe_audio(input_path)
+
+        return jsonify({
+            'success': True,
+            'filename': file.filename,
+            'transcript': transcript,
+            'method': 'whisper' if transcript else 'unsupported',
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'音訊處理失敗: {str(e)}'}), 500
+    finally:
+        import shutil
+        shutil.rmtree(output_dir, ignore_errors=True)
+
+
+def _transcribe_audio(audio_path):
+    """使用 Whisper 進行語音轉文字（如有安裝）"""
+    try:
+        import whisper
+        model = whisper.load_model('base')
+        result = model.transcribe(audio_path, language='zh')
+        return result.get('text', '').strip()
+    except ImportError:
+        # 無 Whisper → 嘗試用 ffmpeg + yt-dlp 的 post-processor
+        try:
+            import subprocess
+            result = subprocess.run(
+                ['which', 'whisper', 'faster-whisper'],
+                capture_output=True, text=True, timeout=5
+            )
+            if result.stdout.strip():
+                # 有 faster-whisper 或其他 CLI
+                proc = subprocess.run(
+                    ['faster-whisper', audio_path, '--language', 'zh', '--output_dir', os.path.dirname(audio_path)],
+                    capture_output=True, text=True, timeout=300
+                )
+                return proc.stdout.strip()
+        except Exception:
+            pass
+        return ''
+    except Exception as e:
+        print(f"[Whisper] 轉寫失敗: {e}")
+        return ''
 
 @app.route('/api/pages', methods=['GET'])
 def get_pages():
@@ -500,11 +724,13 @@ def get_pages():
 # ============================================
 
 if __name__ == '__main__':
+    import sys, io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_DEBUG', '1').lower() in ('1', 'true', 'yes')
 
-    print(f"🚀 VideoText AI Backend v2.0 starting on port {port}")
-    print(f"📡 Supported platforms: YouTube, Bilibili, 小红书 (CDP/Windows), 抖音 (yt-dlp)")
-    print(f"📦 Features: Extract, Download Video/Audio/Text, Batch ZIP")
+    print(f"VideoText AI Backend v2.0 starting on port {port}")
+    print(f"Supported platforms: YouTube, Bilibili, RedNote (CDP/Windows), Douyin (yt-dlp)")
+    print(f"Features: Extract, Download Video/Audio/Text, Batch ZIP")
 
     app.run(host='0.0.0.0', port=port, debug=debug)
