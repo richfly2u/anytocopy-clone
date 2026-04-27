@@ -469,7 +469,12 @@
                 </div>
                 <span class="text-sm font-semibold text-white">VideoText <span class="text-indigo-400">AI</span></span>
             </div>
-            <p class="text-gray-500 text-sm">© 2026 VideoText AI. 影片文案提取 & 去水印工具</p>
+            <p class=\"text-gray-500 text-sm\">© 2026 VideoText AI. 影片文案提取 & 去水印工具</p>
+            <div class=\"flex items-center justify-center gap-4 mt-3\">
+                <a href=\"#\" onclick=\"navigate('/help')\" class=\"text-xs text-gray-500 hover:text-gray-300 transition\">使用說明</a>
+                <span class=\"text-gray-600\">·</span>
+                <a href=\"#\" onclick=\"navigate('/')\" class=\"text-xs text-gray-500 hover:text-gray-300 transition\">首頁</a>
+            </div>
         </div>
     </footer>
 
@@ -881,6 +886,74 @@
         </div>
     </div>
 
+    <!-- ==================== 頁面容器: 幫助 ==================== -->
+    <div id="page-help" class="hidden pt-32 pb-20 px-4">
+        <div class="max-w-3xl mx-auto">
+            <div class="text-center mb-12">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-question-circle text-indigo-400 text-3xl"></i>
+                </div>
+                <h1 class="text-3xl md:text-5xl font-bold mb-4 text-white">使用說明</h1>
+                <p class="text-gray-400">VideoText AI 功能介紹與常見問題</p>
+            </div>
+
+            <div class="space-y-6">
+                <div class="glass-card rounded-2xl p-6">
+                    <h3 class="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                        <i class="fas fa-globe text-indigo-400"></i>支援平台
+                    </h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div class="bg-white/5 rounded-xl p-3 text-center"><i class="fa-brands fa-youtube text-red-500 text-xl mb-1"></i><p class="text-xs text-gray-400">YouTube</p></div>
+                        <div class="bg-white/5 rounded-xl p-3 text-center"><i class="fa-regular fa-note-sticky text-red-400 text-xl mb-1"></i><p class="text-xs text-gray-400">小紅書</p></div>
+                        <div class="bg-white/5 rounded-xl p-3 text-center"><i class="fa-brands fa-tiktok text-purple-400 text-xl mb-1"></i><p class="text-xs text-gray-400">抖音</p></div>
+                        <div class="bg-white/5 rounded-xl p-3 text-center"><i class="fa-brands fa-bilibili text-blue-400 text-xl mb-1"></i><p class="text-xs text-gray-400">B站</p></div>
+                        <div class="bg-white/5 rounded-xl p-3 text-center"><i class="fa-brands fa-weibo text-red-400 text-xl mb-1"></i><p class="text-xs text-gray-400">微博</p></div>
+                        <div class="bg-white/5 rounded-xl p-3 text-center"><i class="fa-solid fa-video text-green-400 text-xl mb-1"></i><p class="text-xs text-gray-400">快手</p></div>
+                        <div class="bg-white/5 rounded-xl p-3 text-center"><i class="fa-solid fa-file-video text-blue-400 text-xl mb-1"></i><p class="text-xs text-gray-400">影片上傳</p></div>
+                        <div class="bg-white/5 rounded-xl p-3 text-center"><i class="fa-solid fa-file-audio text-green-400 text-xl mb-1"></i><p class="text-xs text-gray-400">音訊上傳</p></div>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-6">
+                    <h3 class="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                        <i class="fas fa-rocket text-purple-400"></i>快速開始
+                    </h3>
+                    <div class="space-y-3 text-sm text-gray-300">
+                        <div class="flex gap-3"><span class="text-indigo-400 font-bold flex-shrink-0">1.</span><span>複製抖音、小紅書、YouTube 等平台的分享連結</span></div>
+                        <div class="flex gap-3"><span class="text-indigo-400 font-bold flex-shrink-0">2.</span><span>貼上到首頁輸入框，點擊「開始提取」</span></div>
+                        <div class="flex gap-3"><span class="text-indigo-400 font-bold flex-shrink-0">3.</span><span>等待 AI 提取文案，即可複製或下載</span></div>
+                        <div class="flex gap-3"><span class="text-indigo-400 font-bold flex-shrink-0">4.</span><span>點擊下載按鈕保存影片 / 音訊 / ZIP</span></div>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-2xl p-6">
+                    <h3 class="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                        <i class="fas fa-wand-magic-sparkles text-amber-400"></i>去水印
+                    </h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">小紅書 CDP 攔截的影片自動為無水印版本。圖片去水印支援 AI 模型（Lama，需本機後端）和 OpenCV 降級方案。</p>
+                </div>
+
+                <div class="glass-card rounded-2xl p-6">
+                    <h3 class="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                        <i class="fas fa-microchip text-blue-400"></i>本地檔案
+                    </h3>
+                    <p class="text-sm text-gray-400 leading-relaxed">上傳影片或音訊檔案後，若本機有安裝 OpenAI Whisper，將自動進行語音辨識轉文字。若無 Whisper，則回傳提示訊息。</p>
+                </div>
+
+                <div class="glass-card rounded-2xl p-6">
+                    <h3 class="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                        <i class="fas fa-question-circle text-gray-400"></i>常見問題
+                    </h3>
+                    <div class="space-y-4 text-sm">
+                        <div><p class="text-white font-medium mb-1">為什麼提取失敗？</p><p class="text-gray-400">請確認連結是否有效，小紅書需要 Windows + CDP 服務（port 9223），抖音 CDP 在 port 9333。</p></div>
+                        <div><p class="text-white font-medium mb-1">去水印功能不能用？</p><p class="text-gray-400">AI 去水印僅限本機 Flask 後端可用。Render 版僅支援 OpenCV 基本降級方案，建議在本機啟動後端使用完整功能。</p></div>
+                        <div><p class="text-white font-medium mb-1">支援哪些平台？</p><p class="text-gray-400">YouTube（字幕）、小紅書（CDP 影片+圖片）、抖音（CDP 影片+yt-dlp）、B站（API）、微博/快手/TikTok（yt-dlp）。</p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div> <!-- 關閉 page-home -->
 
     <script>
@@ -904,6 +977,7 @@
                 '/rewrite': 'page-rewrite',
                 '/video-extract': 'page-video-extract',
                 '/audio-extract': 'page-audio-extract',
+                '/help': 'page-help',
             };
             const target = document.getElementById(pageMap[path] || 'page-home');
             if (target) target.classList.remove('hidden');
