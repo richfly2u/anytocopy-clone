@@ -24,6 +24,7 @@ def download_video_ytdlp(url, output_dir=None, format_type='best'):
         'outtmpl': output_template,
         'quiet': True,
         'no_warnings': True,
+        'nocheckcertificate': True,
     }
 
     if format_type == 'mp3':

@@ -100,6 +100,7 @@ def download_video(video_id, output_dir=None):
         'outtmpl': output_template,
         'quiet': True,
         'no_warnings': True,
+        'nocheckcertificate': True,
         'format': 'best[ext=mp4]/best',
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -113,6 +114,7 @@ def download_audio_stream(video_id):
     ydl_opts = {
         'quiet': True,
         'no_warnings': True,
+        'nocheckcertificate': True,
         'format': 'bestaudio/best',
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -137,6 +139,7 @@ def download_audio(video_id, output_dir=None):
         'outtmpl': output_template,
         'quiet': True,
         'no_warnings': True,
+        'nocheckcertificate': True,
         'format': 'bestaudio/best',
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',

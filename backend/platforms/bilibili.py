@@ -139,6 +139,7 @@ def download_video(bvid, output_dir):
         'outtmpl': output_template,
         'quiet': True,
         'no_warnings': True,
+        'nocheckcertificate': True,
         'format': 'best[ext=mp4]/best',
     }
 

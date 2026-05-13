@@ -85,6 +85,8 @@ def extract_via_ytdlp(url):
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
+            'nocheckcertificate': True,
+            'nocheckcertificate': True,
             'skip_download': True,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:

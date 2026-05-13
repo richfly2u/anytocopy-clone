@@ -101,6 +101,8 @@ def _try_ytdlp_extract(url):
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
+            'nocheckcertificate': True,
+            'nocheckcertificate': True,
             'skip_download': True,
         }
 

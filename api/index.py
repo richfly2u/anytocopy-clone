@@ -134,6 +134,7 @@ def _handle_douyin(url):
         import yt_dlp
         ydl_opts = {
             'quiet': True, 'no_warnings': True, 'skip_download': True,
+            'nocheckcertificate': True,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)

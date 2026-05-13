@@ -229,6 +229,8 @@ def download_video_endpoint():
             'outtmpl': os.path.join(output_dir, '%(title)s.%(ext)s'),
             'quiet': True,
             'no_warnings': True,
+            'nocheckcertificate': True,
+            'nocheckcertificate': True,
             'format': 'best[ext=mp4]/best',
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -267,6 +269,8 @@ def download_audio_endpoint():
             'outtmpl': os.path.join(output_dir, '%(title)s.%(ext)s'),
             'quiet': True,
             'no_warnings': True,
+            'nocheckcertificate': True,
+            'nocheckcertificate': True,
             'format': 'bestaudio/best',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
@@ -400,6 +404,7 @@ def download_zip():
                         'outtmpl': os.path.join(sub_dir, '%(title)s.%(ext)s'),
                         'quiet': True,
                         'no_warnings': True,
+                        'nocheckcertificate': True,
                         'format': 'best[ext=mp4]/best',
                     }
                     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
