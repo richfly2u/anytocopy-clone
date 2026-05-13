@@ -263,6 +263,7 @@
                     <span class="platform-badge"><i class="fa-brands fa-bilibili text-blue-400"></i> B站</span>
                     <span class="platform-badge"><i class="fa-brands fa-weibo text-red-400"></i> 微博</span>
                     <span class="platform-badge"><i class="fa-solid fa-video text-green-400"></i> 快手</span>
+                    <span class="platform-badge"><i class="fa-brands fa-facebook text-blue-500"></i> Facebook</span>
                     <span class="platform-badge"><i class="fa-solid fa-plus"></i> 更多</span>
                 </div>
             </div>
@@ -1107,6 +1108,9 @@
             } else if (url.includes('weibo')) {
                 platform = '微博';
                 icon = 'fa-brands fa-weibo';
+            } else if (url.includes('facebook') || url.includes('fb.com') || url.includes('fb.watch')) {
+                platform = 'Facebook';
+                icon = 'fa-brands fa-facebook';
             }
 
             return {

@@ -122,6 +122,8 @@ def extract():
         result = _handle_douyin(url)
     elif platform in ('tiktok', 'kuaishou', 'weibo'):
         result = _handle_ytdlp_platform(url, platform)
+    elif platform == 'facebook':
+        result = _handle_facebook(url)
     else:
         return jsonify({'error': f'平台 {platform} 尚未支援'}), 400
 
@@ -204,6 +206,22 @@ def download_video_endpoint():
                            download_name=f"{info.get('title','douyin')[:30]}.mp4",
                            mimetype='video/mp4')
         return jsonify({'error': '無法取得抖音影片 URL'}), 400
+
+    # Facebook: use dedicated download handler
+    if platform == 'facebook':
+        from platforms.facebook import download_video as fb_download
+        try:
+            filepath, title = fb_download(url, output_dir)
+            return send_file(
+                filepath,
+                as_attachment=True,
+                download_name=f"{title[:30]}.mp4",
+                mimetype='video/mp4',
+            )
+        except Exception as e:
+            import shutil
+            shutil.rmtree(output_dir, ignore_errors=True)
+            return jsonify({'error': f'Facebook 下载失败: {str(e)}'}), 500
 
     try:
         import yt_dlp
@@ -448,6 +466,12 @@ def _handle_xiaohongshu(url):
                           '請參考 README 啟動相關服務。',
             'error': str(e),
         }
+
+
+def _handle_facebook(url):
+    """Route to Facebook handler"""
+    from platforms.facebook import extract as fb_extract
+    return fb_extract(url)
 
 
 def _handle_ytdlp_platform(url, platform):

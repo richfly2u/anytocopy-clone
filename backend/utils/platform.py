@@ -36,6 +36,12 @@ PLATFORM_PATTERNS = {
         r'(?:https?://)?(?:www\.)?weibo\.com/',
         r'(?:https?://)?weibo\.(?:tv|video)/',
     ],
+    'facebook': [
+        r'(?:https?://)?(?:www\.)?facebook\.com/',
+        r'(?:https?://)?(?:www\.)?fb\.com/',
+        r'(?:https?://)?m\.facebook\.com/',
+        r'(?:https?://)?fb\.watch/',
+    ],
 }
 
 PLATFORM_NAMES = {
@@ -46,6 +52,7 @@ PLATFORM_NAMES = {
     'bilibili': 'B站',
     'kuaishou': '快手',
     'weibo': '微博',
+    'facebook': 'Facebook',
 }
 
 PLATFORM_ICONS = {
@@ -56,6 +63,7 @@ PLATFORM_ICONS = {
     'bilibili': 'fa-brands fa-bilibili',
     'kuaishou': 'fa-solid fa-video',
     'weibo': 'fa-brands fa-weibo',
+    'facebook': 'fa-brands fa-facebook',
 }
 
 # Which platforms support which features
@@ -67,6 +75,7 @@ PLATFORM_FEATURES = {
     'bilibili': {'transcript': True, 'video_download': True, 'audio_download': True},
     'kuaishou': {'transcript': False, 'video_download': True, 'audio_download': False},
     'weibo': {'transcript': False, 'video_download': True, 'audio_download': False},
+    'facebook': {'transcript': False, 'video_download': True, 'audio_download': False},
 }
 
 
