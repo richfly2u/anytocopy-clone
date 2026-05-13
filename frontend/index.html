@@ -212,6 +212,17 @@
 
     <!-- Toast -->
     <div id="toast" class="toast"></div>
+    <!-- 下載進度視窗 -->
+    <div id="download-overlay" class="hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);">
+        <div style="background:#1a1a2e;border:1px solid rgba(99,102,241,0.3);border-radius:16px;padding:32px 48px;text-align:center;min-width:280px;">
+            <div class="loading-spinner" style="width:40px;height:40px;border:3px solid rgba(99,102,241,0.2);border-top-color:#6366f1;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px;"></div>
+            <p id="download-msg" style="color:#e2e8f0;font-size:15px;font-weight:500;margin:0 0 4px;">正在下載影片...</p>
+            <p style="color:#94a3b8;font-size:13px;margin:0;">檔案越大等待越久，請耐心等候</p>
+        </div>
+    </div>
+    <style>
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
 
     <!-- ==================== 頁面容器: 首頁 ==================== -->
     <div id="page-home" class="">
@@ -1803,9 +1814,13 @@
                 showToast('❌ 請先提取影片資訊', 'error');
                 return;
             }
+            // 顯示下載進度視窗
+            const overlay = document.getElementById('download-overlay');
+            overlay.classList.remove('hidden');
+            document.getElementById('download-msg').textContent = '正在準備下載...';
             try {
-                showToast('⏳ 正在準備影片下載...', 'info');
                 const downloadUrl = extractedData.video_direct_url || extractedData._video_direct_url || extractedData.video_url;
+                document.getElementById('download-msg').textContent = '正在下載影片...';
                 const response = await fetch(`${API_BASE}/api/download/video`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1819,6 +1834,7 @@
                     throw new Error(err.error || '影片下載失敗');
                 }
                 const blob = await response.blob();
+                document.getElementById('download-msg').textContent = '正在儲存檔案...';
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
                 const filename = response.headers.get('Content-Disposition')
@@ -1827,8 +1843,10 @@
                 a.download = decodeURIComponent(filename);
                 a.click();
                 URL.revokeObjectURL(a.href);
-                showToast('✅ 影片下載中', 'info');
+                overlay.classList.add('hidden');
+                showToast('✅ 影片下載完成', 'info');
             } catch (err) {
+                overlay.classList.add('hidden');
                 console.error('Video download error:', err);
                 showToast(`❌ ${err.message}`, 'error');
             }
