@@ -1817,10 +1817,9 @@
             // 顯示下載進度視窗
             const overlay = document.getElementById('download-overlay');
             overlay.classList.remove('hidden');
-            document.getElementById('download-msg').textContent = '正在準備下載...';
+            document.getElementById('download-msg').textContent = '正在取得影片資源...';
             try {
                 const downloadUrl = extractedData.video_direct_url || extractedData._video_direct_url || extractedData.video_url;
-                document.getElementById('download-msg').textContent = '正在下載影片...';
                 const response = await fetch(`${API_BASE}/api/download/video`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1833,6 +1832,7 @@
                     const err = await response.json();
                     throw new Error(err.error || '影片下載失敗');
                 }
+                document.getElementById('download-msg').textContent = '正在下載中，請稍候...';
                 const blob = await response.blob();
                 document.getElementById('download-msg').textContent = '正在儲存檔案...';
                 const a = document.createElement('a');
