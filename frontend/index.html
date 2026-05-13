@@ -213,10 +213,11 @@
     <!-- Toast -->
     <div id="toast" class="toast"></div>
     <!-- 下載進度視窗 -->
-    <div id="download-overlay" class="hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);">
+    <div id="download-overlay" class="hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);">
         <div style="background:#1a1a2e;border:1px solid rgba(99,102,241,0.3);border-radius:16px;padding:32px 48px;text-align:center;min-width:280px;">
             <div class="loading-spinner" style="width:40px;height:40px;border:3px solid rgba(99,102,241,0.2);border-top-color:#6366f1;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px;"></div>
             <p id="download-msg" style="color:#e2e8f0;font-size:15px;font-weight:500;margin:0 0 4px;">正在下載影片...</p>
+            <p id="download-pct" style="color:#6366f1;font-size:28px;font-weight:700;margin:8px 0 0;"></p>
             <p style="color:#94a3b8;font-size:13px;margin:0;">檔案越大等待越久，請耐心等候</p>
         </div>
     </div>
@@ -1817,6 +1818,7 @@
             // 顯示下載進度視窗
             const overlay = document.getElementById('download-overlay');
             overlay.classList.remove('hidden');
+            overlay.style.display = 'flex';
             document.getElementById('download-msg').textContent = '正在取得影片資源...';
             try {
                 const downloadUrl = extractedData.video_direct_url || extractedData._video_direct_url || extractedData.video_url;
@@ -1833,7 +1835,23 @@
                     throw new Error(err.error || '影片下載失敗');
                 }
                 document.getElementById('download-msg').textContent = '正在下載中，請稍候...';
-                const blob = await response.blob();
+                // 用 Stream API 追蹤真實下載進度
+                const contentLength = +response.headers.get('Content-Length') || 0;
+                const reader = response.body.getReader();
+                const chunks = [];
+                let received = 0;
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    chunks.push(value);
+                    received += value.length;
+                    if (contentLength > 0) {
+                        const pct = Math.min(99, Math.round(received / contentLength * 100));
+                        document.getElementById('download-msg').textContent = `正在下載... ${pct}%`;
+                        document.getElementById('download-pct').textContent = `${pct}%`;
+                    }
+                }
+                const blob = new Blob(chunks);
                 document.getElementById('download-msg').textContent = '正在儲存檔案...';
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
