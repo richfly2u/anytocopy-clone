@@ -25,33 +25,40 @@ def extract(video_id):
     thumbnail = ''
 
     # Step 1: Get metadata from yt-dlp
+    error_msg = ''
     try:
-        ydl_opts = {'quiet': True, 'no_warnings': True, 'skip_download': True}
+        ydl_opts = {
+            'quiet': True, 'no_warnings': True, 'skip_download': True,
+            'nocheckcertificate': True,
+            'socket_timeout': 15,
+        }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             title = info.get('title', 'Untitled')
             author = info.get('uploader', 'Unknown')
             duration = info.get('duration', 0)
             thumbnail = info.get('thumbnail', '')
-    except Exception:
-        pass
+    except Exception as e:
+        error_msg = str(e)[:200]
 
     # Step 2: Get transcript via youtube_transcript_api
     transcript_text = None
     transcript_language = None
+    transcript_error = ''
     try:
         api = YouTubeTranscriptApi()
         transcript = api.fetch(video_id, languages=['zh-Hant', 'zh-Hans', 'zh', 'en'])
         transcript_text = '\n'.join([item.text for item in transcript])
         transcript_language = 'auto'
-    except Exception:
+    except Exception as e:
+        transcript_error = str(e)[:200]
         try:
             api = YouTubeTranscriptApi()
             transcript = api.fetch(video_id)
             transcript_text = '\n'.join([item.text for item in transcript])
             transcript_language = 'auto'
-        except Exception:
-            pass
+        except Exception as e2:
+            transcript_error = str(e2)[:200]
 
     result = {
         'platform': 'YouTube',
@@ -69,7 +76,7 @@ def extract(video_id):
     if not transcript_text:
         # Try description as fallback
         try:
-            ydl_opts = {'quiet': True, 'no_warnings': True, 'skip_download': True}
+            ydl_opts = {'quiet': True, 'no_warnings': True, 'skip_download': True, 'nocheckcertificate': True, 'socket_timeout': 15}
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 desc = (info.get('description') or '')[:2000]
@@ -79,6 +86,8 @@ def extract(video_id):
         except Exception:
             pass
         result['error'] = 'No captions'
+        if error_msg:
+            result['debug'] = f'yt-dlp: {error_msg} | transcript: {transcript_error}'
 
     return result
 

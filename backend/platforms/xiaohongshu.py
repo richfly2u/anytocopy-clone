@@ -21,7 +21,8 @@ from pathlib import Path
 import requests
 
 CDP_PORT = int(os.environ.get('CDP_PORT', '9223'))
-CDP_API = f"http://127.0.0.1:{CDP_PORT}"
+CDP_HOST = os.environ.get('CDP_HOST', '127.0.0.1')
+CDP_API = f"http://{CDP_HOST}:{CDP_PORT}"
 TIMEOUT = 60
 
 HEADERS = {
